@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# PyCharm configueration files & folders
+.idea/
+
+
+# Personam files
+zhy/
+project/
