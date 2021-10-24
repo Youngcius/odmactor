@@ -37,7 +37,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Unit odmactor-test / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -136,3 +136,4 @@ dmypy.json
 # Personam files
 zhy/
 project/
+test/
