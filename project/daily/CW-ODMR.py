@@ -1,6 +1,6 @@
-from scheduler.continuity import CWScheduler
+from odmactor.scheduler import CWScheduler
 import scipy.constants as C
-from utils.plotting import plot_freq_contrast
+from odmactor.utils.plotting import plot_freq_contrast
 
 scheduler = CWScheduler()
 

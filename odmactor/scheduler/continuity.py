@@ -1,7 +1,7 @@
 import datetime
 import time
 import os
-from odmactor.scheduler import Scheduler
+from odmactor.scheduler.base import Scheduler
 import numpy as np
 import scipy.constants as C
 import TimeTagger as tt
@@ -256,3 +256,30 @@ class CWScheduler(Scheduler):
             pickle.dump(self._result_detail, f)
         np.savetxt(fname + '.txt', self._result)
         print('data has been saved into {}'.format(fname))
+
+    def run_single_step(self, power, freq, mw_off=False):
+        """
+        Single-frequency & single-power setting for running the scheduler
+        :param power: MW power, unit: dBm
+        :param freq: MW frequency, unit: Hz
+        :param mw_off: whether turn off MW channel of ASG
+        :return: 1-D array: [N,]
+        """
+        print('running for freq = {:.4f} GHz, power = {:.2f} dBm'.format(freq / C.giga, power))
+
+        self.configure_mw_paras(power, freq)
+
+        # start sequence for time: N*t
+        if mw_off:
+            self.mw_off_seq()
+        else:
+            self.mw_on_seq(self._asg_conf['t'] / C.nano)
+        self.counter.start()
+
+        time.sleep(self.asg_dwell)
+        data = self.counter.getData().ravel()
+
+        self.counter.stop()
+        self.asg.stop()
+
+        return data

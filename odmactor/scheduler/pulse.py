@@ -1,4 +1,4 @@
-from odmactor.scheduler import Scheduler
+from odmactor.scheduler.base import Scheduler
 import TimeTagger as tt
 import numpy as np
 import os

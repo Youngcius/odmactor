@@ -1,4 +1,4 @@
-from odmactor.scheduler import Scheduler
+from odmactor.scheduler.base import Scheduler
 import datetime
 import time
 import os
