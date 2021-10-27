@@ -3,6 +3,7 @@ import scipy.constants as C
 import unittest
 import numpy as np
 from odmactor.utils.plotting import plot_freq_contrast
+import  time
 
 t_ns = 1e4
 N = int(1e3)
@@ -20,6 +21,7 @@ class SingleFrequencyTest(unittest.TestCase):
         scheduler.configure_odmr_seq(t_ns, N)
         scheduler.configure_tagger_counting()  # default: Counter
         data_on = scheduler.run_single_step(p, f).mean()
+        time.sleep(0.5)
         data_off = scheduler.run_single_step(p, f, mw_off=True).mean()
 
         # 如果是 4 Mps 的计数，10 us 均值 ~ 40
