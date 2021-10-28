@@ -22,7 +22,7 @@ class SingleFrequencyTest(unittest.TestCase):
         scheduler.configure_tagger_counting()  # default: Counter
         data_on = scheduler.run_single_step(p, f).mean()
         time.sleep(0.5)
-        data_off = scheduler.run_single_step(p, f, mw_off=True).mean()
+        data_off = scheduler.run_single_step(p, f, mw_control=True).mean()
 
         # 如果是 4 Mps 的计数，10 us 均值 ~ 40
         print('Average counting:')
@@ -43,7 +43,7 @@ class SingleFrequencyTest(unittest.TestCase):
         counts = []
         for f in freqs:
             data_on = scheduler.run_single_step(p, f).mean()
-            data_off = scheduler.run_single_step(p, f, mw_off=True).mean()
+            data_off = scheduler.run_single_step(p, f, mw_control=True).mean()
             counts.append([data_on, data_off])
         counts = np.array(counts)
         contrasts = np.abs(counts[:, 0] - counts[:, 1]) / counts[:, 0]

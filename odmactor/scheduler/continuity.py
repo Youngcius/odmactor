@@ -47,7 +47,7 @@ class CWScheduler(Scheduler):
     #     self._asg_conf['t'] = t * C.nano  # ns --> s
     #     self._asg_conf['N'] = N
     #     self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']
-    #     self.mw_dwell = self.asg_dwell + self.time_pad
+    #     self.mw_dwell = self.asg_dwell + self.time_pad*2
     #     # generate ASG wave forms
     #     idx_tagger_channel = self.channel['tagger'] - 1
     #     idx_apd_channel = self.channel['apd'] - 1
@@ -81,7 +81,7 @@ class CWScheduler(Scheduler):
         self._asg_conf['t'] = t * C.nano  # ns --> s
         self._asg_conf['N'] = N
         self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']
-        # self.mw_dwell = self.asg_dwell + self.time_pad
+        # self.mw_dwell = self.asg_dwell + self.time_pad*2
         self.mw_dwell = self.asg_dwell
 
         # generate ASG wave forms ('pulse' mode for Laser)
@@ -99,40 +99,6 @@ class CWScheduler(Scheduler):
 
         # connect & download pulse data
         # self.asg_connect_and_download_data(self._asg_sequences)
-
-    def mw_on_seq(self, t):
-
-        mw_seq = [t, 0]
-        idx_mw_channel = self.channel['mw'] - 1
-        self._asg_sequences[idx_mw_channel] = mw_seq
-        # self.asg.close_device()
-
-        self.asg_connect_and_download_data(self._asg_sequences)
-
-        self.asg.start()
-
-    def mw_off_seq(self):
-
-        mw_seq = [0, 0]
-        idx_mw_channel = self.channel['mw'] - 1
-        self._asg_sequences[idx_mw_channel] = mw_seq
-        # self.asg.close_device()
-        self.asg_connect_and_download_data(self._asg_sequences)
-        self.asg.start()
-
-    def laser_on_seq(self, t):
-        idx_laser_channel = self.channel['laser'] - 1
-        self._asg_sequences[idx_laser_channel] = [t, 0]
-        # self.asg.close_device()
-        self.asg_connect_and_download_data(self._asg_sequences)
-        self.asg.start()
-
-    def laser_off_seq(self):
-        idx_laser_channel = self.channel['laser'] - 1
-        self._asg_sequences[idx_laser_channel] = [0, 0]
-        # self.asg.close_device()
-        self.asg_connect_and_download_data(self._asg_sequences)
-        self.asg.start()
 
     def _start_device(self, *args, **kwargs):
 
@@ -162,12 +128,12 @@ class CWScheduler(Scheduler):
         # while self.counter.isRunning():
         for freq in self._freqs:
             # print('scanning freq {:.2f} GHz'.format(freq / C.giga))
-            time.sleep(self.time_pad / 2)
+            time.sleep(self.time_pad)
             time.sleep(self.mw_dwell)  # for each MW frequency
             data.append(self.counter.getData())
             self.time_log.append(time.time_ns())
             # self.counter.clear()
-            time.sleep(self.time_pad / 2)
+            time.sleep(self.time_pad)
         self.counter.stop()
 
         data_avg = [np.mean(ls) for ls in data]
@@ -257,12 +223,12 @@ class CWScheduler(Scheduler):
         np.savetxt(fname + '.txt', self._result)
         print('data has been saved into {}'.format(fname))
 
-    def run_single_step(self, power, freq, mw_off=False):
+    def run_single_step(self, power, freq, mw_control='on'):
         """
         Single-frequency & single-power setting for running the scheduler
         :param power: MW power, unit: dBm
         :param freq: MW frequency, unit: Hz
-        :param mw_off: whether turn off MW channel of ASG
+        :param mw_control: 'on' or 'off'
         :return: 1-D array: [N,]
         """
         print('running for freq = {:.4f} GHz, power = {:.2f} dBm'.format(freq / C.giga, power))
@@ -270,10 +236,13 @@ class CWScheduler(Scheduler):
         self.configure_mw_paras(power, freq)
 
         # start sequence for time: N*t
-        if mw_off:
+        if mw_control == 'on':
+            self.mw_on_seq(self._asg_conf['t'] / C.nano)
+
+        elif mw_control=='off':
             self.mw_off_seq()
         else:
-            self.mw_on_seq(self._asg_conf['t'] / C.nano)
+            raise ValueError('unsupported mw_control parameter')
         self.counter.start()
 
         time.sleep(self.asg_dwell)

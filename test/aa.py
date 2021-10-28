@@ -18,7 +18,7 @@ def single_freq():
     scheduler.configure_tagger_counting()  # default: Counter
     data_on = scheduler.run_single_step(p, f).mean()
     time.sleep(0.5)
-    data_off = scheduler.run_single_step(p, f, mw_off=True).mean()
+    data_off = scheduler.run_single_step(p, f, mw_control=True).mean()
 
     # 如果是 4 Mps 的计数，10 us 均值 ~ 40
     print('Average counting:')

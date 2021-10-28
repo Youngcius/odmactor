@@ -8,6 +8,7 @@ from RsInstrument import RsInstrument
 from odmactor.utils.asg import ASG
 from typing import List, Any
 import scipy.constants as C
+from odmactor.utils.sequence import seq_to_str
 
 """
 Scheduler abstract base class
@@ -21,6 +22,7 @@ class Scheduler(abc.ABC):
 
     def __init__(self, output_dir: str = '../output/', *args, **kwargs):
         self._cache: Any = None
+        self._data = []
         self.name = 'ODMR Base Scheduler'
         # pi pulse, for spin manipulation
         self.pi_pulse = {'freq': None, 'power': None, 'time': None}  # unit: Hz, dBm, s
@@ -44,7 +46,7 @@ class Scheduler(abc.ABC):
         self.sync_delay = 0.0
         self.mw_dwell = 0.0
         self.asg_dwell = 0.0
-        self.time_pad = 1.0
+        self.time_pad = 0.0
         self.time_total = 0.0  # total time for scanning frequencies
         self.output_dir = output_dir
         if not os.path.exists(self.output_dir):
@@ -184,6 +186,7 @@ class Scheduler(abc.ABC):
         self.stop()
 
     def stop(self):
+        self.counter.stop()
         self._asg.stop()
         # self._mw_instr.write_str('STOP')
         # TODO: how to stop the microwave
@@ -237,6 +240,40 @@ class Scheduler(abc.ABC):
             pickle.dump(self, f)
         print('object has been save to {}'.format(fname))
 
+    def mw_on_seq(self, t):
+
+        mw_seq = [t, 0]
+        idx_mw_channel = self.channel['mw'] - 1
+        self._asg_sequences[idx_mw_channel] = mw_seq
+        # self.asg.close_device()
+
+        self.asg_connect_and_download_data(self._asg_sequences)
+
+        self.asg.start()
+
+    def mw_off_seq(self):
+
+        mw_seq = [0, 0]
+        idx_mw_channel = self.channel['mw'] - 1
+        self._asg_sequences[idx_mw_channel] = mw_seq
+        # self.asg.close_device()
+        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.start()
+
+    def laser_on_seq(self, t):
+        idx_laser_channel = self.channel['laser'] - 1
+        self._asg_sequences[idx_laser_channel] = [t, 0]
+        # self.asg.close_device()
+        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.start()
+
+    def laser_off_seq(self):
+        idx_laser_channel = self.channel['laser'] - 1
+        self._asg_sequences[idx_laser_channel] = [0, 0]
+        # self.asg.close_device()
+        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.start()
+
     def __str__(self):
         return self.name
 
@@ -267,6 +304,10 @@ class Scheduler(abc.ABC):
     @property
     def result_detail(self):
         return self._result_detail
+
+    @property
+    def sequences_strings(self):
+        return seq_to_str(self._asg_sequences)
 
 
 def dBm_to_mW(dBm):

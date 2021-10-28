@@ -8,10 +8,14 @@ def cut_edge_zeros(arr):
 
 
 def cal_contrast(ls):
+    """
+    :param ls: size of [N*2,]
+    :return: size of scalar
+    """
     # Sequence location problems
     ls = np.array(ls)
     # contrast = ls[::2] / ls[1::2]
-    contrast = np.abs(ls[::2].sum()  - ls[1::2].sum()) / ls[1::2].sum()
+    contrast = np.abs(ls[::2].sum() - ls[1::2].sum()) / ls[1::2].sum()
     return contrast
     # if contrast.mean() > 1:
     #     contrast = 1 / contrast

@@ -1,13 +1,18 @@
 from odmactor.scheduler.base import Scheduler
 import TimeTagger as tt
 import numpy as np
+import threading
 import os
+import json
 import datetime
 import time
 import scipy.constants as C
 from odmactor.utils import cut_edge_zeros, cal_contrast
 import pickle
 
+# 20u
+# rise: 20s
+# down: 20s
 """
 Pulse detection (frequency-domain method)
 输入：
@@ -20,6 +25,13 @@ Pulse detection (frequency-domain method)
 	- 生成两通道数据（channel['laser']，channel['mw'] --> asg_data: Matrix）
 	- For each freq in freqs: Asg start --> Asg stop 历时 T ，存储 APD 数据 到 self._cache
 	- 最后统一计算各频率点的对比度，结果到 self.result : {'freqs': …, 'ratio': …}，self.result_detail
+经验参数：
+    - init: 5us
+    - init-mw-interval 3us
+    - mw: 5us
+    - readout sign: 400ns
+    - readout-interval: 200ns
+    - readout ref: 400s
 """
 
 
@@ -28,52 +40,66 @@ class PulseScheduler(Scheduler):
     Pulse-based ODMR manipulation scheduler
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, transition_time=0, *args, **kwargs):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
+        self.two_pulse_readout = False
+        self.transition_time = transition_time  # 计数过渡到平衡时的时间（开关微波时）
 
-    def configure_odmr_seq(self, t_mw, t_init, t_read_sig, t_read_ref, t_interval=20, N: int = 100):
+    def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000,
+                           inter_readout=200, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
             asg laser channel:
-            -----                   ---------
-            |   |                   |       |
-            |   |-------------------|       |----
+            -----               ---------
+            |   |               |       |
+            |   |---------------|       |----
             asg microwave channel:
                     -------------
                     |           |
-            --------|           |----------------
+            --------|           |------------
             asg tagger acquisition channel:
-                                    ---   ---
-                                    | |   | |
-            ------------------------| |---| |----
+                                ---   ---
+                                | |   | |
+            --------------------| |---| |----
         All units for the parameters is 'ns'
-        :param t_mw: time span for microwave actual operation in a ASG period
-        :param t_init: time span for laser initialization
-        :param t_read_sig: time span for fluorescence signal readout
-        :param t_read_ref: time span for reference signal readout
-        :param t_interval: time span for interval
+        :param t_init: time span for laser initialization, e.g. 5000
+        :param t_mw: time span for microwave actual operation in a ASG period, e.g. 5000
+        :param t_read_sig: time span for fluorescence signal readout, e.g. 400
+        :param t_read_ref: time span for reference signal readout, e.g. 400
+                            if the parameter is not assigned, means single-pulse readout
+        :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 3000
+        :param inter_readout: interval between single readout pulse and reference signal readout, e.g. 200
+                            when t_read_ref is assigned, this parameter will play its role
+        :param inter_period: interval between two neighbor periods, e.g. 200
         :param N: number of ASG operation periods
         """
         # unit: ns
-        t = t_init + t_interval + t_mw + t_interval + t_read_sig + t_interval + t_read_ref + t_interval
         # total time for 'N' period, also for MW operation time at each frequency point
+        if t_read_ref is not None:
+            self.two_pulse_readout = True
+            t = t_init + inter_init_mw + t_mw + t_read_sig + inter_readout + t_read_ref + inter_period
+            laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig + inter_readout + t_read_ref, inter_period]
+            mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_readout + t_read_ref + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_readout, t_read_ref, inter_period]
+        else:
+            # single-pulse readout
+            t = t_init + inter_init_mw + t_mw + t_read_sig + inter_period
+            laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig, inter_period]
+            mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_period]
+
         self._asg_conf['t'] = t * C.nano  # unit: s
         self._asg_conf['N'] = N
         self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']  # duration without padding
-        self.mw_dwell = self.asg_dwell + self.time_pad
+        self.mw_dwell = self.asg_dwell + self.time_pad * 2 + self.transition_time
 
         # generate ASG wave forms
         idx_laser_channel = self.channel['laser'] - 1
         idx_mw_channel = self.channel['mw'] - 1
         idx_tagger_channel = self.channel['tagger'] - 1
         idx_apd_channel = self.channel['apd'] - 1
-        laser_seq = [t_init, t_mw + 2 * t_interval, t_read_sig + t_interval + t_read_ref, t_interval]
-        if self.mw_ttl == 1:
-            mw_seq = [0, t_init + t_interval, t_mw, 3 * t_interval + t_read_sig + t_read_ref]
-        else:
-            mw_seq = [t_init + t_interval, t_mw, 3 * t_interval + t_read_sig + t_read_ref, 0]
-        tagger_seq = [0, t_mw + 2 * t_interval + t_init, t_read_sig, t_interval, t_read_ref, t_interval]
+
         self._asg_sequences = [[0, 0] for i in range(8)]
         self._asg_sequences[idx_laser_channel] = laser_seq
         self._asg_sequences[idx_mw_channel] = mw_seq
@@ -90,71 +116,76 @@ class PulseScheduler(Scheduler):
             self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
             # self._mw_instr.write_str('SOUR:PULM:TRIG:MODE SING')
             # self._mw_instr.write_str('SOUR:PULM:TRIG:IMM')
-
-        beg = time.time_ns()
-
-        # 2. run ASG then
-        self._asg.start()
-
-        end = time.time_ns()
-        self.sync_delay = end - beg
-
         print('MW status now:', self._mw_instr.instrument_status_checking)
 
-        # execute Measurement instance
-        self.counter = tt.CountBetweenMarkers(self.tagger, self.tagger_input['apd'],
-                                              begin_channel=self.tagger_input['asg'],
-                                              end_channel=-self.tagger_input['asg'],
-                                              n_values=self._asg_conf['N'] * 2)
-        # self.counter.startFor(int((self.time_total + 5) / C.pico))  # parameter unit: ps
+        # beg = time.time_ns()
+
+        # 2. run ASG then
+        self._data.clear()
+        self._asg.start()
+
+        # end = time.time_ns()
+        # self.sync_delay = end - beg
+
+    def _get_data(self):
+        self._data.append(self.counter.getData())
+        self.counter.clear()
 
     def _acquire_data(self):
         """
-        Default setting: save file into text files. TODO
+        Default setting: save file into text files.
         """
+        for i, freq in enumerate(self._freqs):
+            # print('scanning freq {:.2f} GHz'.format(freq / C.giga))
+            t = threading.Thread(target=self._get_data, name='readout-{}'.format(i))
+            time.sleep(self.time_pad + self.transition_time)
+            time.sleep(self.asg_dwell)  # effective time for accumulate counts
+            t.start()  # another thread for readout
+            time.sleep(self.time_pad)
+            t.join()
 
-        # acquire data from each period, from TimeTagger TODO
-        # 0~T: N*2 data points, N*2 < n_values
-        # or: automatically store
-        # T = self._asg_conf['t'] * self._asg_conf['N']
-        # t_cur = 0
-        # while t_cur < self.time_total:
-        #     t_cur += T
-        #     counts = self.counter.getData()
-        #
+        if self.two_pulse_readout:
+            # calculate the contrasts
+            self._cal_contrasts_result()
+            fname = os.path.join(self.output_dir,
+                                 'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
+                                                                     round(time.time() / 120)))
+        else:
+            # just calculate the counts
+            self._cal_counts_result()
+            fname = os.path.join(self.output_dir,
+                                 'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
+        with open(fname + '.json', 'w') as f:
+            json.dump(self._result_detail, f)
+        np.savetxt(fname + '.txt', self._result)
+        print('result has been saved into {}'.format(fname + '.json'))
 
-        data = []
-        # while self.counter.isRunning():
-        #     time.sleep(self.mw_dwell)  # for each MW frequency
-        #     data.append(self.counter.getData())
-        #     self.counter.clear()
+    def run(self, mw_control='on'):
+        mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
+        if mw_control == 'on':
+            mw_seq_off = [0, sum(mw_seq_on)]
+            self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
+        else:
+            pass
+        self._start_device()
+        self._acquire_data()
+        # 恢复微波的ASG的MW通道为 on
+        self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
 
-        for freq in self._freqs:
-            print('scanning freq {:.2f} GHz'.format(freq / C.giga))
-            self.counter.clear()
-            time.sleep(self.time_pad / 2)
-            time.sleep(self.asg_dwell)
-            data.append(self.counter.getData())
-
-            time.sleep(self.time_pad / 2)
-
-        self.counter.stop()
-        # contrast_list = [cal_contrast(ls) for ls in data]
-        #
-        # contrast = [np.mean(item) for item in contrast_list]  # average contrast
-        contrast = [cal_contrast(ls) for ls in data]
-        print(len(self._freqs), len(contrast))
-        self._result = [self._freqs, contrast]
+    def _cal_contrasts_result(self):
+        contrasts = [cal_contrast(ls) for ls in self._data]
+        self._result = [self._freqs, contrasts]
         self._result_detail = {
             'freqs': self._freqs,
-            'contrast': contrast,
-            'origin_data': data,
-            # 'contrast_list': contrast_list
+            'contrast': contrasts,
+            'origin_data': self._data,
         }
 
-        fname = os.path.join(self.output_dir,
-                             'Pulse-ODMR-result-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
-        with open(fname + '.pkl', 'wb') as f:
-            pickle.dump(self._result_detail, f)
-        # np.savetxt(fname + '.txt', self._result)
-        print('data has been saved into {}'.format(fname))
+    def _cal_counts_result(self):
+        counts = [np.mean(ls) for ls in self._data]
+        self._result = [self._freqs, counts]
+        self._result_detail = {
+            'freqs': self._freqs,
+            'counts': counts,
+            'origin_data': self._data
+        }
