@@ -81,3 +81,7 @@ class PulseTest(unittest.TestCase):
         scheduler.close()
 
         plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
+
+
+if __name__ == '__main__':
+    unittest.main()
