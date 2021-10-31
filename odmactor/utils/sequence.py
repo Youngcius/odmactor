@@ -3,7 +3,6 @@ from functools import reduce
 from typing import List
 from operator import concat
 import matplotlib.pyplot as plt
-import numpy as np
 
 """
 Utils functions processing ASG sequences
@@ -72,7 +71,6 @@ def seq_to_fig(seq: List[List[float]]):
     fig = plt.figure(figsize=(14, 2 * len(idx_exist)))
     for i, ch in enumerate(channels):
         plt.stairs(levels[i], baseline=baselines[i], label=ch)
-    plt.stairs(levels[i], baseline=2)
     plt.legend()
     plt.title('Sequences')
     plt.ylabel('channel')
