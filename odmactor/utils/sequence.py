@@ -73,7 +73,7 @@ def seq_to_fig(seq: List[List[float]]):
     plt.ylabel('channel')
     plt.xlabel('time ({} ns)'.format(int(gcd)))
     plt.xlim(0, max([sum(s) for s in seq_eff]))
-    plt.ylim(0, max(levels[-1]) + 0.1)
+    plt.ylim(-0.1, max(levels[-1]) + 0.1)
     plt.yticks([])
     return fig
 
