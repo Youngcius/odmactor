@@ -1,9 +1,7 @@
-import copy
 import math
 from functools import reduce
 from typing import List
 from operator import concat
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,6 +11,10 @@ Utils functions processing ASG sequences
 
 
 class SequenceString:
+    """
+    A OOP encapsulation: String representation of a sequence of pulses
+    """
+
     def __init__(self, height: int = 3, unit_width=1):
         self.strings = [''] * height
         self.unit_width = unit_width
@@ -41,6 +43,9 @@ class SequenceString:
 
 
 def seq_to_fig(seq: List[List[float]]):
+    """
+    Convert sequences (list of list) into a Figure instance
+    """
     idx_exist = [i for i, l in enumerate(seq) if sum(l) > 0]
     n = len(idx_exist)  # num_channels
     channels = ['ch {}'.format(i + 1) for i in idx_exist]
@@ -102,33 +107,3 @@ def seq_to_str(seq: List[List[float]]):
 
     str_list = ['\n'.join([k, str(v)]) for k, v in str_dict.items()]
     return '\n\n'.join(str_list)
-
-
-if __name__ == '__main__':
-    # 测试
-    #             -----               ---------
-    #             |   |               |       |
-    #             |   |---------------|       |----
-    #             asg microwave channel:
-    #                     -------------
-    #                     |           |
-    #             --------|           |------------
-    #             asg tagger acquisition channel:
-    #                                 ---   ---
-    #                                 | |   | |
-    #             --------------------| |---| |----
-    asgdata = [
-        [100, 100 + 200, 100 + 20 + 100 + 30, 0],
-        [0, 100 + 100, 200, 100 + 20 + 100 + 30],
-        [0, 100 + 100 + 200, 100+ 20+100+30,0],
-        [0, 0],
-        [0, 100 + 100 + 200, 100, 20, 100, 30],
-        [0, 0],
-        [0, 0],
-        [0, 0],
-    ]
-
-    print(seq_to_str(asgdata))
-
-    fig = seq_to_fig(asgdata)
-    fig.show()

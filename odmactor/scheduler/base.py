@@ -8,7 +8,7 @@ from RsInstrument import RsInstrument
 from odmactor.utils.asg import ASG
 from typing import List, Any
 import scipy.constants as C
-from odmactor.utils.sequence import seq_to_str
+from odmactor.utils.sequence import seq_to_str, seq_to_fig
 
 """
 Scheduler abstract base class
@@ -308,6 +308,10 @@ class Scheduler(abc.ABC):
     @property
     def sequences_strings(self):
         return seq_to_str(self._asg_sequences)
+
+    @property
+    def sequences_figure(self):
+        return seq_to_fig(self._asg_sequences)
 
 
 def dBm_to_mW(dBm):
