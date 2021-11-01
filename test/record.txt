@@ -1,0 +1,120 @@
+C:\Users\qimqu\anaconda3\envs\qim\python.exe C:/Users/qimqu/OneDrive/Desktop/Git-Project/odmactor/test/single-freq.py
+ USE ASGDLL_x64.dll
+Current Tagger input channels: {'apd': 1, 'asg': 2}
+running for freq = 2.8650 GHz, power = 10.00 dBm
+running for freq = 2.8650 GHz, power = 10.00 dBm
+data on: 466.6933, data off 490.9169
+contrast: 0.0519
+running for freq = 2.8660 GHz, power = 10.00 dBm
+running for freq = 2.8660 GHz, power = 10.00 dBm
+data on: 493.4359, data off 501.2174
+contrast: 0.0158
+running for freq = 2.8670 GHz, power = 10.00 dBm
+running for freq = 2.8670 GHz, power = 10.00 dBm
+data on: 498.1313, data off 507.4775
+contrast: 0.0188
+running for freq = 2.8680 GHz, power = 10.00 dBm
+running for freq = 2.8680 GHz, power = 10.00 dBm
+data on: 503.9868, data off 508.6162
+contrast: 0.0092
+running for freq = 2.8690 GHz, power = 10.00 dBm
+running for freq = 2.8690 GHz, power = 10.00 dBm
+data on: 502.1109, data off 510.0763
+contrast: 0.0159
+running for freq = 2.8700 GHz, power = 10.00 dBm
+running for freq = 2.8700 GHz, power = 10.00 dBm
+data on: 503.8467, data off 511.4044
+contrast: 0.0150
+running for freq = 2.8710 GHz, power = 10.00 dBm
+running for freq = 2.8710 GHz, power = 10.00 dBm
+data on: 505.2516, data off 511.6027
+contrast: 0.0126
+running for freq = 2.8720 GHz, power = 10.00 dBm
+running for freq = 2.8720 GHz, power = 10.00 dBm
+data on: 505.0327, data off 511.2870
+contrast: 0.0124
+running for freq = 2.8730 GHz, power = 10.00 dBm
+running for freq = 2.8730 GHz, power = 10.00 dBm
+data on: 506.1595, data off 513.1705
+contrast: 0.0139
+running for freq = 2.8740 GHz, power = 10.00 dBm
+running for freq = 2.8740 GHz, power = 10.00 dBm
+data on: 507.8477, data off 514.5508
+contrast: 0.0132
+running for freq = 2.8750 GHz, power = 10.00 dBm
+running for freq = 2.8750 GHz, power = 10.00 dBm
+data on: 509.7749, data off 514.2101
+contrast: 0.0087
+running for freq = 2.8760 GHz, power = 10.00 dBm
+running for freq = 2.8760 GHz, power = 10.00 dBm
+data on: 512.3864, data off 515.1937
+contrast: 0.0055
+running for freq = 2.8770 GHz, power = 10.00 dBm
+running for freq = 2.8770 GHz, power = 10.00 dBm
+data on: 511.7266, data off 515.0030
+contrast: 0.0064
+running for freq = 2.8780 GHz, power = 10.00 dBm
+running for freq = 2.8780 GHz, power = 10.00 dBm
+data on: 513.6342, data off 515.2399
+contrast: 0.0031
+running for freq = 2.8790 GHz, power = 10.00 dBm
+running for freq = 2.8790 GHz, power = 10.00 dBm
+data on: 514.6170, data off 515.5203
+contrast: 0.0018
+running for freq = 2.8800 GHz, power = 10.00 dBm
+running for freq = 2.8800 GHz, power = 10.00 dBm
+data on: 516.2917, data off 517.3126
+contrast: 0.0020
+running for freq = 2.8810 GHz, power = 10.00 dBm
+running for freq = 2.8810 GHz, power = 10.00 dBm
+data on: 516.6469, data off 516.1199
+contrast: 0.0010
+running for freq = 2.8820 GHz, power = 10.00 dBm
+running for freq = 2.8820 GHz, power = 10.00 dBm
+data on: 516.6515, data off 516.4171
+contrast: 0.0005
+running for freq = 2.8830 GHz, power = 10.00 dBm
+running for freq = 2.8830 GHz, power = 10.00 dBm
+data on: 515.6647, data off 516.2168
+contrast: 0.0011
+running for freq = 2.8840 GHz, power = 10.00 dBm
+running for freq = 2.8840 GHz, power = 10.00 dBm
+data on: 516.6587, data off 517.2595
+contrast: 0.0012
+running for freq = 2.8850 GHz, power = 10.00 dBm
+running for freq = 2.8850 GHz, power = 10.00 dBm
+data on: 516.3398, data off 516.5192
+contrast: 0.0003
+Average counting:
+MW on:
+[466.69 493.44 498.13 503.99 502.11 503.85 505.25 505.03 506.16 507.85
+ 509.77 512.39 511.73 513.63 514.62 516.29 516.65 516.65 515.66 516.66
+ 516.34]
+MW off:
+[490.92 501.22 507.48 508.62 510.08 511.4  511.6  511.29 513.17 514.55
+ 514.21 515.19 515.   515.24 515.52 517.31 516.12 516.42 516.22 517.26
+ 516.52]
+Contrast:
+[[466.6933 490.9169]
+ [493.4359 501.2174]
+ [498.1313 507.4775]
+ [503.9868 508.6162]
+ [502.1109 510.0763]
+ [503.8467 511.4044]
+ [505.2516 511.6027]
+ [505.0327 511.287 ]
+ [506.1595 513.1705]
+ [507.8477 514.5508]
+ [509.7749 514.2101]
+ [512.3864 515.1937]
+ [511.7266 515.003 ]
+ [513.6342 515.2399]
+ [514.617  515.5203]
+ [516.2917 517.3126]
+ [516.6469 516.1199]
+ [516.6515 516.4171]
+ [515.6647 516.2168]
+ [516.6587 517.2595]
+ [516.3398 516.5192]]
+
+Process finished with exit code 0
