@@ -3,7 +3,7 @@ import scipy.constants as C
 import unittest
 import numpy as np
 from odmactor.utils.plotting import plot_freq_contrast
-import  time
+import time
 
 t_ns = 1e4
 N = int(1e3)

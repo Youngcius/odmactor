@@ -21,20 +21,25 @@ channel_dict = {
     'tagger': 5
 }
 
+t_init = 2e4
+t_mw = 5e4
+inter_init_mw = 1e4
+
+
 scheduler = PulseScheduler()
 
 scheduler.channel = channel_dict
-scheduler.configure_odmr_seq(t_mw=2000, t_init=100, t_read_sig=500, t_read_ref=500, t_interval=50,
-                             N=N)  # unit: ns
-# scheduler.configure_odmr_seq(t_mw=200000000, t_init=100000000, t_read_sig=100000000, t_read_ref=100000000,
-#                              t_interval=100000000,
-#                              N=N)  # unit: ns
+scheduler.configure_mw_paras(power=10)
+scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, t_read_ref=400, inter_init_mw=inter_init_mw, N=N)
+
 scheduler.set_mw_scan_freq_start_stop(freq_start, freq_end, freq_step)  # dwell=None
 scheduler.configure_tagger_counting()
 scheduler.run()
 
-print('sync delay: {} ns'.format(scheduler.sync_delay))
-print('total running time required: {:.4f} s'.format(scheduler.time_total))
-time.sleep(scheduler.time_total + 10)  # main thread sleeps for time_total
+# print('sync delay: {} ns'.format(scheduler.sync_delay))
+# print('total running time required: {:.4f} s'.format(scheduler.time_total))
+# time.sleep(scheduler.time_total + 10)  # main thread sleeps for time_total
 # scheduler.stop()
 scheduler.close()
+
+
