@@ -17,7 +17,7 @@ freq_step = 100 * C.mega
 # MW period at each freq: 5*N ~ 0.5s
 # total time: 5 * N * 10(11) ~ 5 s
 ##########################
-N = int(1e6)
+N = int(1e3)
 channel_dict = {
     'laser': 1,
     'mw': 2,

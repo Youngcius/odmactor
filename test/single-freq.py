@@ -12,9 +12,9 @@ N = int(1e4)
 # duration of single-frequency measurement: 10 ms
 
 class SingleFrequencyTest():
-    def test_single_freq(self, f):
+    def test_single_freq(self, p, f):
         f = f * C.giga
-        p = 10
+        p = p
 
         scheduler = CWScheduler()
         scheduler.configure_mw_paras(p)
@@ -22,12 +22,13 @@ class SingleFrequencyTest():
         scheduler.configure_tagger_counting()  # default: Counter
         data_on = scheduler.run_single_step(p, f).mean()
         time.sleep(0.5)
-        data_off = scheduler.run_single_step(p, f, mw_control='off').mean()
-
-        # 如果是 4 Mps 的计数，10 us 均值 ~ 40
-        print('Average counting:')
-        print('MW on: {:.4f}'.format(data_on), '   MW off: {:.4f}'.format(data_off))
-        print('contrast: {:.4f}'.format(np.abs(data_on - data_off) / data_on))
+        for i in range(20):
+            data_off = scheduler.run_single_step(p, f, mw_control='off').mean()
+            print()
+            # 如果是 4 Mps 的计数，10 us 均值 ~ 40
+            # print('Average counting:')
+            print('MW on: {:.4f}'.format(data_on), '   MW off: {:.4f}'.format(data_off))
+            print('contrast: {:.4f}'.format(np.abs(data_on - data_off) / data_on))
 
     def test_scanning_by_single(self):
         freq_start = 2.85 * C.giga
@@ -81,8 +82,8 @@ if __name__ == '__main__':
     # unittest.main()
 
     st = SingleFrequencyTest()
-    st.test_single_freq(1)
+    # st.test_single_freq(1)
 
-    st.test_single_freq(2.868)
+    st.test_single_freq(10, 2.87)
 
     # st.test_scanning_by_single()

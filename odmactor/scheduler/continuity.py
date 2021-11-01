@@ -115,10 +115,12 @@ class CWScheduler(Scheduler):
     def _acquire_data(self, *args, **kwargs):
 
         for i, freq in enumerate(self._freqs):
-            # print('scanning freq {:.2f} GHz'.format(freq / C.giga))
+            print('scanning freq {:.4f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='readout-{}'.format(i))
+            time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
+            time.sleep(self.time_pad)
             t.join()
 
         # 计算计数
