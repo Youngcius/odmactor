@@ -239,7 +239,7 @@ class CWScheduler(Scheduler):
         if mw_control == 'on':
             self.mw_on_seq(self._asg_conf['t'] / C.nano)
 
-        elif mw_control=='off':
+        elif mw_control == 'off':
             self.mw_off_seq()
         else:
             raise ValueError('unsupported mw_control parameter')

@@ -128,7 +128,7 @@ class PulseScheduler(Scheduler):
         # self.sync_delay = end - beg
 
     def _get_data(self):
-        self._data.append(self.counter.getData())
+        self._data.append(self.counter.getData().tolist())
         self.counter.clear()
 
     def _acquire_data(self):
@@ -155,6 +155,9 @@ class PulseScheduler(Scheduler):
             self._cal_counts_result()
             fname = os.path.join(self.output_dir,
                                  'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
+        # from pprint import pprint
+        # pprint(self.result_detail)
+        print(self.result)
         with open(fname + '.json', 'w') as f:
             json.dump(self._result_detail, f)
         np.savetxt(fname + '.txt', self._result)
@@ -162,9 +165,11 @@ class PulseScheduler(Scheduler):
 
     def run(self, mw_control='on'):
         mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
-        if mw_control == 'on':
+        if mw_control == 'off':
             mw_seq_off = [0, sum(mw_seq_on)]
             self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
+        elif mw_control == 'on':
+            pass
         else:
             pass
         self._start_device()

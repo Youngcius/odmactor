@@ -131,6 +131,7 @@ dmypy.json
 
 # PyCharm configueration files & folders
 .idea/
+.pytest_cache
 
 
 # Personam files

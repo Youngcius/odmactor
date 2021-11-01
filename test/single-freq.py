@@ -14,7 +14,7 @@ N = int(1e3)
 class SingleFrequencyTest(unittest.TestCase):
     def test_single_freq(self):
         f = 2.87 * C.giga
-        p = 20
+        p = 10
 
         scheduler = CWScheduler()
         scheduler.configure_mw_paras(p)
