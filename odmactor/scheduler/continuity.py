@@ -83,8 +83,8 @@ class CWScheduler(Scheduler):
         self._asg_conf['t'] = t * C.nano  # ns --> s
         self._asg_conf['N'] = N
         self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']
-        # self.mw_dwell = self.asg_dwell + self.time_pad*2
-        self.mw_dwell = self.asg_dwell
+        self.mw_dwell = self.asg_dwell + self.time_pad * 2
+        # self.mw_dwell = self.asg_dwell
 
         # generate ASG wave forms ('pulse' mode for Laser)
         idx_laser_channel = self.channel['laser'] - 1
@@ -103,25 +103,34 @@ class CWScheduler(Scheduler):
         self.asg_connect_and_download_data(self._asg_sequences)
 
     def _start_device(self, *args, **kwargs):
-        # run MW firstly
+        # run ASG firstly
+        self._data.clear()
+        self._asg.start()
+
+        # run MW then
         self._mw_instr.write_bool('OUTPUT:STATE', True)
         if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
             self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
 
-        # run ASG then
-        self._data.clear()
-        self._asg.start()
+
 
     def _acquire_data(self, *args, **kwargs):
 
-        for i, freq in enumerate(self._freqs):
-            print('scanning freq {:.4f} GHz'.format(freq / C.giga))
-            t = threading.Thread(target=self._get_data, name='readout-{}'.format(i))
+        # for i, freq in enumerate(self._freqs):
+        #     print('scanning freq {:.4f} GHz'.format(freq / C.giga))
+        n_freqs = len(self._freqs)
+        beg = time.time_ns()
+        for i in range(n_freqs):
+            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
             time.sleep(self.time_pad)
             t.join()
+        end = time.time_ns()
+        self.sync_delay = end - beg
+        print('ideal time', self.mw_dwell * len(self._freqs))
+        print('actualt time', self.sync_delay)
 
         # 计算计数
         counts = [np.mean(ls) for ls in self._data]
