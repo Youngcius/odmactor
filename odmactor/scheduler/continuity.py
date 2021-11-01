@@ -5,7 +5,9 @@ from odmactor.scheduler.base import Scheduler
 import numpy as np
 import scipy.constants as C
 import TimeTagger as tt
+import threading
 import pickle
+import json
 
 """
 Continuous-wave detection (frequency-domain method)
@@ -98,63 +100,43 @@ class CWScheduler(Scheduler):
         self._asg_sequences[idx_apd_channel] = continuous_seq
 
         # connect & download pulse data
-        # self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg_connect_and_download_data(self._asg_sequences)
 
     def _start_device(self, *args, **kwargs):
-
-        # execute Measurement instance
-        # self.counter = tt.CountBetweenMarkers(self.tagger, self.tagger_input['apd'],
-        #                                       begin_channel=self.tagger_input['asg'],
-        #                                       end_channel=-self.tagger_input['asg'],
-        #                                       n_values=self._asg_conf['N'])
-        # self.counter.startFor(int((self.time_total + 5) / C.pico))  # parameter unit: ps
-        self.counter = tt.Counter(self.tagger, channels=[1], binwidth=int(self._asg_conf['t'] / C.pico),
-                                  n_values=self._asg_conf['N'])
-
         # run MW firstly
         self._mw_instr.write_bool('OUTPUT:STATE', True)
         if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
             self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
 
-        a = time.time_ns()
         # run ASG then
+        self._data.clear()
         self._asg.start()
-        b = time.time_ns()
-        self.sync_delay = b - a
 
     def _acquire_data(self, *args, **kwargs):
-        data = []
-        self.time_log = []
-        # while self.counter.isRunning():
-        for freq in self._freqs:
+
+        for i, freq in enumerate(self._freqs):
             # print('scanning freq {:.2f} GHz'.format(freq / C.giga))
-            time.sleep(self.time_pad)
-            time.sleep(self.mw_dwell)  # for each MW frequency
-            data.append(self.counter.getData())
-            self.time_log.append(time.time_ns())
-            # self.counter.clear()
-            time.sleep(self.time_pad)
-        self.counter.stop()
+            t = threading.Thread(target=self._get_data, name='readout-{}'.format(i))
+            time.sleep(self.asg_dwell)  # accumulate counts
+            t.start()  # begin readout
+            t.join()
 
-        data_avg = [np.mean(ls) for ls in data]
-        contrast = [item / data_avg[0] for item in data_avg]  # contrast reference: the first frequency point
-        self._result = np.array([self._freqs, contrast])
-        # self._result = [self._freqs, contrast]
-
+        # 计算计数
+        counts = [np.mean(ls) for ls in self._data]
+        self._result = [self._freqs, counts]
         self._result_detail = {
             'freqs': self._freqs,
-            'contrast': contrast,
-            'origin_data': data
+            'counts': counts,
+            'origtin_data': self._data
         }
 
         fname = os.path.join(self.output_dir,
                              'CW-ODMR-result-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
-        with open(fname + '.pkl', 'wb') as f:
-            pickle.dump(self._result_detail, f)
+        with open(fname + '.json', 'w') as f:
+            json.dump(self._result_detail, f)
         np.savetxt(fname + '.txt', self._result)
-        print('data has been saved into {}'.format(fname))
+        print('result has been saved into {}'.format(fname + '.json'))
 
-        np.savetxt('../output/time_log.txt', self.time_log)
     def run(self, mw_control='on'):
         """
         1) start device
@@ -170,8 +152,12 @@ class CWScheduler(Scheduler):
         else:
             raise ValueError('unsupported MW control parameter (should be "or" or "off"')
 
+        self._start_device()
+        self._acquire_data()
+        self.stop()
+
         # 恢复微波的ASG的MW通道为 on
-        self._asg_sequences[self.channel['mw']-1]=mw_seq_on
+        self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
         self.asg_connect_and_download_data(self._asg_sequences)
 
     def run_origin(self, mw_control='on'):

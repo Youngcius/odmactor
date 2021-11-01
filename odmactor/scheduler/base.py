@@ -176,6 +176,10 @@ class Scheduler(abc.ABC):
         """
         raise NotImplemented
 
+    def _get_data(self):
+        self._data.append(self.counter.getData().tolist())
+        self.counter.clear()
+
     def run(self):
         """
         1) start device

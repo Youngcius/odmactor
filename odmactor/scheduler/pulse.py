@@ -127,10 +127,6 @@ class PulseScheduler(Scheduler):
         # end = time.time_ns()
         # self.sync_delay = end - beg
 
-    def _get_data(self):
-        self._data.append(self.counter.getData().tolist())
-        self.counter.clear()
-
     def _acquire_data(self):
         """
         Default setting: save file into text files.
@@ -175,8 +171,10 @@ class PulseScheduler(Scheduler):
             pass
         self._start_device()
         self._acquire_data()
+        self.stop()
         # 恢复微波的ASG的MW通道为 on
         self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
+        self._asg.stop()
         self.asg_connect_and_download_data(self._asg_sequences)
 
     def _cal_contrasts_result(self):
