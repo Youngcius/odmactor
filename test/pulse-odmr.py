@@ -1,3 +1,7 @@
+import json
+
+import numpy as np
+
 from odmactor.scheduler.pulse import PulseScheduler
 import scipy.constants as C
 import time
@@ -25,7 +29,6 @@ t_init = 2e4
 t_mw = 5e4
 inter_init_mw = 1e4
 
-
 scheduler = PulseScheduler()
 
 scheduler.channel = channel_dict
@@ -42,4 +45,6 @@ scheduler.run()
 # scheduler.stop()
 scheduler.close()
 
-
+np.savetxt('freq-cont.txt', scheduler.result)
+with open('result.json', 'w') as f:
+    json.dump(scheduler.result_detail, f)
