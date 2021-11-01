@@ -12,8 +12,8 @@ N = int(1e4)
 # duration of single-frequency measurement: 10 ms
 
 class SingleFrequencyTest():
-    def test_single_freq(self):
-        f = 2.87 * C.giga
+    def test_single_freq(self, f):
+        f = f * C.giga
         p = 10
 
         scheduler = CWScheduler()
@@ -30,8 +30,8 @@ class SingleFrequencyTest():
         print('contrast: {:.4f}'.format(np.abs(data_on - data_off) / data_on))
 
     def test_scanning_by_single(self):
-        freq_start = 2.865 * C.giga
-        freq_end = 2.885 * C.giga
+        freq_start = 2.85 * C.giga
+        freq_end = 2.89 * C.giga
         freq_step = 1 * C.mega
         p = 10
 
@@ -72,6 +72,7 @@ class SingleFrequencyTest():
         print(counts.round(4))
         #
 
+        np.savetxt('counts.txt', counts)
         np.savetxt('contrast-by-single.txt', np.vstack([freqs, contrasts]))
         # # plot_freq_contrast(freqs, contrasts, fname='contrast-by-single')
 
@@ -80,5 +81,8 @@ if __name__ == '__main__':
     # unittest.main()
 
     st = SingleFrequencyTest()
-    # st.test_single_freq()
-    st.test_scanning_by_single()
+    st.test_single_freq(1)
+
+    st.test_single_freq(2.868)
+
+    # st.test_scanning_by_single()
