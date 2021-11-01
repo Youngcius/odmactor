@@ -155,12 +155,47 @@ class CWScheduler(Scheduler):
         print('data has been saved into {}'.format(fname))
 
         np.savetxt('../output/time_log.txt', self.time_log)
-
-    def run(self):
+    def run(self, mw_control='on'):
         """
         1) start device
         2) acquire data timely
         """
+        mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
+        if mw_control == 'off':
+            mw_seq_off = [0, sum(mw_seq_on)]
+            self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
+            self.asg_connect_and_download_data(self._asg_sequences)
+        elif mw_control == 'on':
+            pass
+        else:
+            raise ValueError('unsupported MW control parameter (should be "or" or "off"')
+
+        # 恢复微波的ASG的MW通道为 on
+        self._asg_sequences[self.channel['mw']-1]=mw_seq_on
+        self.asg_connect_and_download_data(self._asg_sequences)
+
+    def run_origin(self, mw_control='on'):
+        """
+        1) start device
+        2) acquire data timely
+        """
+        mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
+        if mw_control == 'off':
+            mw_seq_off = [0, sum(mw_seq_on)]
+            self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
+            self.asg_connect_and_download_data(self._asg_sequences)
+        elif mw_control == 'on':
+            pass
+        else:
+            raise ValueError('unsupported MW control parameter (should be "or" or "off"')
+
+        self._start_device()
+        self._acquire_data()
+
+        # 恢复微波的ASG的MW通道为 on
+        self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
+        self.asg_connect_and_download_data(self._asg_sequences)
+
         # self._start_device()
         # self._acquire_data()
 

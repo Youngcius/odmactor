@@ -168,6 +168,7 @@ class PulseScheduler(Scheduler):
         if mw_control == 'off':
             mw_seq_off = [0, sum(mw_seq_on)]
             self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
+            self.asg_connect_and_download_data(self._asg_sequences)
         elif mw_control == 'on':
             pass
         else:
@@ -176,6 +177,7 @@ class PulseScheduler(Scheduler):
         self._acquire_data()
         # 恢复微波的ASG的MW通道为 on
         self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
+        self.asg_connect_and_download_data(self._asg_sequences)
 
     def _cal_contrasts_result(self):
         contrasts = [cal_contrast(ls) for ls in self._data]
