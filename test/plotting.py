@@ -20,7 +20,7 @@ def plot_cw_by_single():
 
 # 一次 scan-CW
 def plot_cw_scanning():
-    f_cnt = np.loadtxt('scan-cw-f-c.txt')
+    f_cnt = np.loadtxt('scan-cw-f-c-e.txt')
     plt.plot(f_cnt[0], f_cnt[1])
     plt.show()
 
