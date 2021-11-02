@@ -20,6 +20,7 @@ def plot_freq_contrast(freqs, contrast, fname: str = None):
     :param contrast: contrast, range between 0 and 1
     """
     plt.style.use('seaborn')
+    plt.figure()
     plt.plot(freqs, contrast)
     plt.xlabel('frequency (GHz)')
     plt.ylabel('count contrast')

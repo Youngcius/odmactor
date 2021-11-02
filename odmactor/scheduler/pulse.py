@@ -1,14 +1,11 @@
-from odmactor.scheduler.base import Scheduler
+from odmactor.scheduler import ODMRScheduler
 import TimeTagger as tt
-import numpy as np
+import warnings
 import threading
 import os
-import json
 import datetime
 import time
 import scipy.constants as C
-from odmactor.utils import cut_edge_zeros, cal_contrast
-import pickle
 
 # 20u
 # rise: 20s
@@ -35,16 +32,16 @@ Pulse detection (frequency-domain method)
 """
 
 
-class PulseScheduler(Scheduler):
+class PulseScheduler(ODMRScheduler):
     """
     Pulse-based ODMR manipulation scheduler
     """
 
-    def __init__(self, transition_time=0, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
         self.two_pulse_readout = False
-        self.transition_time = transition_time  # 计数过渡到平衡时的时间（开关微波时）
+        # self.transition_time = transition_time  # 计数过渡到平衡时的时间（开关微波时）
 
     def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000,
                            inter_readout=200, inter_period=200, N: int = 1000):
@@ -89,10 +86,7 @@ class PulseScheduler(Scheduler):
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_period]
 
-        self._asg_conf['t'] = t * C.nano  # unit: s
-        self._asg_conf['N'] = N
-        self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']  # duration without padding
-        self.mw_dwell = self.asg_dwell + self.time_pad * 2 + self.transition_time
+        self._conf_time_paras(t, N)
 
         # generate ASG wave forms
         idx_laser_channel = self.channel['laser'] - 1
@@ -104,93 +98,47 @@ class PulseScheduler(Scheduler):
         self._asg_sequences[idx_laser_channel] = laser_seq
         self._asg_sequences[idx_mw_channel] = mw_seq
         self._asg_sequences[idx_tagger_channel] = tagger_seq
-        self._asg_sequences[idx_apd_channel] = tagger_seq
+        self._asg_sequences[idx_apd_channel] = [t, 0]
 
         # connect & download pulse data
         self.asg_connect_and_download_data(self._asg_sequences)
-
-    def _start_device(self):
-        # 1. run MW firstly
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
-        if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
-            self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
-            # self._mw_instr.write_str('SOUR:PULM:TRIG:MODE SING')
-            # self._mw_instr.write_str('SOUR:PULM:TRIG:IMM')
-        print('MW status now:', self._mw_instr.instrument_status_checking)
-
-        # beg = time.time_ns()
-
-        # 2. run ASG then
-        self._data.clear()
-        self._asg.start()
-
-        # end = time.time_ns()
-        # self.sync_delay = end - beg
 
     def _acquire_data(self):
         """
         Default setting: save file into text files.
         """
-        for i, freq in enumerate(self._freqs):
-            # print('scanning freq {:.2f} GHz'.format(freq / C.giga))
-            t = threading.Thread(target=self._get_data, name='readout-{}'.format(i))
-            time.sleep(self.time_pad + self.transition_time)
-            time.sleep(self.asg_dwell)  # effective time for accumulate counts
-            t.start()  # another thread for readout
-            time.sleep(self.time_pad)
-            t.join()
-
+        # 1. scan freq
+        self._scan_freqs_and_get_data()
+        # 2. calculate result (count or contrast)
         if self.two_pulse_readout:
-            # calculate the contrasts
+            # calculate contrasts
             self._cal_contrasts_result()
             fname = os.path.join(self.output_dir,
                                  'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
                                                                      round(time.time() / 120)))
         else:
-            # just calculate the counts
+            # just calculate counts
             self._cal_counts_result()
             fname = os.path.join(self.output_dir,
                                  'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
-        # from pprint import pprint
-        # pprint(self.result_detail)
-        print(self.result)
-        with open(fname + '.json', 'w') as f:
-            json.dump(self._result_detail, f)
-        np.savetxt(fname + '.txt', self._result)
-        print('result has been saved into {}'.format(fname + '.json'))
+        # 3. save result
+        self.save_result(fname)
 
-    def run(self, mw_control='on'):
-        mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
-        if mw_control == 'off':
-            mw_seq_off = [0, sum(mw_seq_on)]
-            self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
-            self.asg_connect_and_download_data(self._asg_sequences)
-        elif mw_control == 'on':
-            pass
-        else:
-            pass
-        self._start_device()
-        self._acquire_data()
-        self.stop()
-        # 恢复微波的ASG的MW通道为 on
-        self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
-        self._asg.stop()
-        self.asg_connect_and_download_data(self._asg_sequences)
-
-    def _cal_contrasts_result(self):
-        contrasts = [cal_contrast(ls) for ls in self._data]
-        self._result = [self._freqs, contrasts]
-        self._result_detail = {
-            'freqs': self._freqs,
-            'contrast': contrasts,
-            'origin_data': self._data,
-        }
-
-    def _cal_counts_result(self):
-        counts = [np.mean(ls) for ls in self._data]
-        self._result = [self._freqs, counts]
-        self._result_detail = {
-            'freqs': self._freqs,
-            'counts': counts,
-            'origin_data': self._data
-        }
+    # def run(self, mw_control='on'):
+    #     mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
+    #     if mw_control == 'off':
+    #         mw_seq_off = [0, sum(mw_seq_on)]
+    #         self._asg_sequences[self.channel['mw'] - 1] = mw_seq_off
+    #         self.asg_connect_and_download_data(self._asg_sequences)
+    #     elif mw_control == 'on':
+    #         pass
+    #     else:
+    #         pass
+    #     print('Begin to run {}. Frequency: {:.4f} - {:.4f} GHz.'.format(self.name, self._freqs[0], self._freqs[-1]))
+    #     print('Estimated total running time: {:.2f} s'.format(self.time_total))
+    #     self._start_device()
+    #     self._acquire_data()
+    #     self.stop()
+    #     # 恢复微波的ASG的MW通道为 on
+    #     self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
+    #     self.asg_connect_and_download_data(self._asg_sequences)

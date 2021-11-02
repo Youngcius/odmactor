@@ -1,5 +1,5 @@
+from odmactor.scheduler.base import Scheduler, ODMRScheduler
 from odmactor.scheduler.continuity import CWScheduler
-from odmactor.scheduler.base import Scheduler
 from odmactor.scheduler.pulse import PulseScheduler
 from odmactor.scheduler.ramsey import RamseyScheduler
 
