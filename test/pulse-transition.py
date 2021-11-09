@@ -37,50 +37,56 @@ t_init = 2e4
 t_mw = 5e4
 inter_init_mw = 1e4
 
-transition_time = 0.0  # 平衡过渡时间
+
+# transition_time = 0.0  # 平衡过渡时间
 
 
 def contrast_testing():
-    scheduler = PulseScheduler(transition_time=transition_time)
+    scheduler = PulseScheduler()
     scheduler.channel = channel_dict
     scheduler.tagger_input = tagger_input
     scheduler.configure_mw_paras(power=10)
     scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, t_read_ref=400, inter_init_mw=inter_init_mw, N=N)
-    scheduler.set_mw_scan_freq_start_stop(freq_start, freq_end, freq_step)
+    scheduler.set_mw_freqs(freq_start, freq_end, freq_step)
     scheduler.configure_tagger_counting(reader='cbm')
     scheduler.run()
     scheduler.close()
-    with open('seq.txt', 'w') as f:
-        f.write(scheduler.sequences_strings)
-    # scheduler.sequences_figure.save('pulse-seq.png', dpi=400)
+    # with open('seq.txt', 'w') as f:
+    #     f.write(scheduler.sequences_strings)
+    scheduler.sequences_figure.save('pulse-seq.png', dpi=400)
 
     plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
 
+
 def counts_testing():
-    scheduler = PulseScheduler(transition_time=transition_time)
+    scheduler = PulseScheduler()
     scheduler.channel = channel_dict
     scheduler.tagger_input = tagger_input
     scheduler.configure_mw_paras(power=10)
-    scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, t_read_ref=400, inter_init_mw=inter_init_mw, N=N)
-    scheduler.set_mw_scan_freq_start_stop(freq_start, freq_end, freq_step)
-    scheduler.configure_tagger_counting()
+    scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, inter_init_mw=inter_init_mw, N=N)
+    scheduler.set_mw_freqs(freq_start, freq_end, freq_step)
+    scheduler.configure_tagger_counting(reader='cbm')
 
-    scheduler.run('on')
-    scheduler.close()
+    scheduler.run_scanning('on')
+    # run之后自动stop各个仪器，
+    # scheduler.close()
+
     res_on = scheduler.result
 
-    # scheduler.run('off')
-    # scheduler.close()
-    # res_off = scheduler.result
-    #
-    # contrasts = [abs(c_off - c_on) / c_on for c_on, c_off in zip(res_on[1], res_off[1])]
+    scheduler.run('off')
+    # 自动重启各个仪器
+    scheduler.close()
+    res_off = scheduler.result
+
+    contrasts = [abs(c_off - c_on) / c_on for c_on, c_off in zip(res_on[1], res_off[1])]
 
     plt.plot(*res_on, label='MW on')
-    # plt.plot(*res_off, label='MW off')
+    plt.plot(*res_off, label='MW off')
     plt.title('Counts comparison')
-    plt.savefig('counts_on_off', dpi=400)
+    plt.savefig('counts_on_off (Pulse)', dpi=400)
 
-    # plot_freq_contrast(res_on[0], contrasts, fname='contrasts-two-pulse')
+    plot_freq_contrast(res_on[0], contrasts, fname='contrasts-single-pulse-repetition')
+
 
 #
 # class PulseTest(unittest.TestCase):
@@ -129,15 +135,18 @@ def counts_testing():
 # if __name__ == '__main__':
 #     unittest.main()
 def wave_form():
-    scheduler = PulseScheduler(transition_time=transition_time)
+    scheduler = PulseScheduler()
     scheduler.channel = channel_dict
     scheduler.tagger_input = tagger_input
     scheduler.configure_mw_paras(power=10)
     scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, t_read_ref=400, inter_init_mw=inter_init_mw, N=N)
-    scheduler.set_mw_scan_freq_start_stop(freq_start, freq_end, freq_step)
+    scheduler.set_mw_freqs(freq_start, freq_end, freq_step)
     scheduler.configure_tagger_counting()
 
     scheduler.sequences_figure.savefig('seq.png', dpi=400)
+    scheduler.close()
+
 
 if __name__ == '__main__':
-    counts_testing()
+    # counts_testing()
+    wave_form()

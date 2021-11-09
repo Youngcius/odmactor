@@ -17,7 +17,6 @@ class SingleFrequencyTest():
     def test_single_freq(self, p, f):
         f = f * C.giga
         p = p
-
         scheduler = CWScheduler()
         scheduler.configure_mw_paras(p)
         scheduler.configure_odmr_seq(t_ns, N)
@@ -37,14 +36,16 @@ class SingleFrequencyTest():
         freq_end = 2.89 * C.giga
         freq_step = 1 * C.mega
         p = 10
-
+        # 通道、微波、序列、counter
         scheduler = CWScheduler()
         scheduler.configure_mw_paras(p)
         scheduler.set_mw_freqs(freq_start,freq_end,freq_step)
         scheduler.configure_odmr_seq(t_ns, N)
         scheduler.configure_tagger_counting()
+
         scheduler.run_scanning('on')
         res_on = scheduler.result #[freqs, counts]
+
         scheduler.run_scanning('off')
         res_off = scheduler.result
         scheduler.close()
@@ -54,9 +55,9 @@ class SingleFrequencyTest():
         plt.plot(*res_on, label='MW on')
         plt.plot(*res_off, label='MW off')
         plt.title('Counts comparison')
-        plt.savefig('counts_on_off', dpi=400)
+        plt.savefig('counts_on_off (CW)', dpi=400)
 
-        plot_freq_contrast(res_on[0], contrasts, fname='contrasts-two-pulse')
+        plot_freq_contrast(res_on[0], contrasts, fname='contrasts-CW')
 
         print('Average counting:')
         print('MW on:')

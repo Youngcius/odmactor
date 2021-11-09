@@ -61,64 +61,64 @@ class Scheduler(abc.ABC):
         else:
             self.mw_ttl = 1  # default: high-level effective
 
-    def set_mw_scan_freq_center_span(self, center: float, span: float, step: float, dwell: float = None):
-        """
-        Frequency-scanning mode with center and span frequencies to set.
-        :param center: center frequency, unit: Hz
-        :param span: span frequency, unit: Hz
-        :param step: each step frequency, unit: Hz
-        :param dwell: dwelling time for each scanning point, unit: s
-        """
-        self.mw_exec_mode = 'scan-center-span'
-        self._mw_instr.write_float('FREQ:CENT', center)
-        self._mw_instr.write_float('FREQ:SPAN', span)
-        self._mw_instr.write_float('SOUR:SWE:FREQ:STEP:LIN', step)  # define the step
-        if dwell is not None:
-            self.mw_dwell = dwell
-        self._mw_instr.write_float('SWE:DWEL', self.mw_dwell)
-        ########################
-        # 2021-10-15 modified
-        # self._mw_instr.write_str('SOUR:SWE:FREQ:MODE AUTO')
-        # self._mw_instr.write_str('TRIG:FSW:SOUR EXT')  # external trigger
-        ########################
-        self._mw_instr.write_str('TRIG:FSW:SOUR SING')
-
-        self._mw_instr.write_str('SOUR:FREQ:MODE SWE')  # define sweep mode
-        n_freqs = int(span / step + 1)
-        self._freqs = np.linspace(center - span / 2, center + span / 2, n_freqs).tolist()
-        if self.mw_dwell != 0:
-            # has set ODDR sequences
-            self.time_total = self.mw_dwell * n_freqs
-
-    def set_mw_scan_freq_start_stop(self, start: float, end: float, step: float, dwell: float = None):
-        """
-        Frequency-scanning mode with start and end frequencies to set.
-        :param start: start frequency, unit: Hz
-        :param end: end frequency, unit: Hz
-        :param step: each step frequency, unit: Hz
-        :param dwell: dwelling time for each scanning point, unit: s, default: 1s
-        """
-
-        self.mw_exec_mode = 'scan-start-stop'
-        self._mw_instr.write_float('FREQ:STAR', start)
-        self._mw_instr.write_float('FREQ:STOP', end)
-        self._mw_instr.write_float('SOUR:SWE:FREQ:STEP:LIN', step)  # define the step
-        if dwell is not None:
-            self.mw_dwell = dwell  # unit: s
-        self._mw_instr.write_float('SWE:DWEL', self.mw_dwell)
-        ########################
-        # 2021-10-15 modified
-        # self._mw_instr.write_str('SOUR:SWE:FREQ:MODE AUTO')
-        # self._mw_instr.write_str('TRIG:FSW:SOUR EXT')  # external trigger
-        ########################
-        # 2021-10-21 modified
-        self._mw_instr.write_str('TRIG:FSW:SOUR SING')
-
-        self._mw_instr.write_str('SOUR:FREQ:MODE SWE')  # define sweep mode
-        n_freqs = int((end - start) / step + 1)
-        self._freqs = np.linspace(start, end, n_freqs).tolist()
-        if self.mw_dwell != 0:
-            self.time_total = self.mw_dwell * n_freqs
+    # def set_mw_scan_freq_center_span(self, center: float, span: float, step: float, dwell: float = None):
+    #     """
+    #     Frequency-scanning mode with center and span frequencies to set.
+    #     :param center: center frequency, unit: Hz
+    #     :param span: span frequency, unit: Hz
+    #     :param step: each step frequency, unit: Hz
+    #     :param dwell: dwelling time for each scanning point, unit: s
+    #     """
+    #     self.mw_exec_mode = 'scan-center-span'
+    #     self._mw_instr.write_float('FREQ:CENT', center)
+    #     self._mw_instr.write_float('FREQ:SPAN', span)
+    #     self._mw_instr.write_float('SOUR:SWE:FREQ:STEP:LIN', step)  # define the step
+    #     if dwell is not None:
+    #         self.mw_dwell = dwell
+    #     self._mw_instr.write_float('SWE:DWEL', self.mw_dwell)
+    #     ########################
+    #     # 2021-10-15 modified
+    #     # self._mw_instr.write_str('SOUR:SWE:FREQ:MODE AUTO')
+    #     # self._mw_instr.write_str('TRIG:FSW:SOUR EXT')  # external trigger
+    #     ########################
+    #     self._mw_instr.write_str('TRIG:FSW:SOUR SING')
+    #
+    #     self._mw_instr.write_str('SOUR:FREQ:MODE SWE')  # define sweep mode
+    #     n_freqs = int(span / step + 1)
+    #     self._freqs = np.linspace(center - span / 2, center + span / 2, n_freqs).tolist()
+    #     if self.mw_dwell != 0:
+    #         # has set ODDR sequences
+    #         self.time_total = self.mw_dwell * n_freqs
+    #
+    # def set_mw_scan_freq_start_stop(self, start: float, end: float, step: float, dwell: float = None):
+    #     """
+    #     Frequency-scanning mode with start and end frequencies to set.
+    #     :param start: start frequency, unit: Hz
+    #     :param end: end frequency, unit: Hz
+    #     :param step: each step frequency, unit: Hz
+    #     :param dwell: dwelling time for each scanning point, unit: s, default: 1s
+    #     """
+    #
+    #     self.mw_exec_mode = 'scan-start-stop'
+    #     self._mw_instr.write_float('FREQ:STAR', start)
+    #     self._mw_instr.write_float('FREQ:STOP', end)
+    #     self._mw_instr.write_float('SOUR:SWE:FREQ:STEP:LIN', step)  # define the step
+    #     if dwell is not None:
+    #         self.mw_dwell = dwell  # unit: s
+    #     self._mw_instr.write_float('SWE:DWEL', self.mw_dwell)
+    #     ########################
+    #     # 2021-10-15 modified
+    #     # self._mw_instr.write_str('SOUR:SWE:FREQ:MODE AUTO')
+    #     # self._mw_instr.write_str('TRIG:FSW:SOUR EXT')  # external trigger
+    #     ########################
+    #     # 2021-10-21 modified
+    #     self._mw_instr.write_str('TRIG:FSW:SOUR SING')
+    #
+    #     self._mw_instr.write_str('SOUR:FREQ:MODE SWE')  # define sweep mode
+    #     n_freqs = int((end - start) / step + 1)
+    #     self._freqs = np.linspace(start, end, n_freqs).tolist()
+    #     if self.mw_dwell != 0:
+    #         self.time_total = self.mw_dwell * n_freqs
 
     def set_mw_freqs(self, start, end, step):
         # unit: Hz
@@ -154,8 +154,10 @@ class Scheduler(abc.ABC):
         N = self._asg_conf['N']
 
         if reader == 'counter':
+            # continuous counting
             self.counter = tt.Counter(self.tagger, channels=[self.tagger_input['apd']], binwidth=t_ps, n_values=N)
         elif reader == 'cbm':
+            # pulse readout
             if double_readout:
                 self.counter = tt.CountBetweenMarkers(self.tagger, self.tagger_input['apd'],
                                                       begin_channel=self.tagger_input['asg'],
@@ -359,23 +361,27 @@ def dBm_to_mW(dBm):
 def mW_to_dBm(mW):
     return 10 * np.log10(mW)
 
-
-class SimpleScheduler(Scheduler):
-    """
-    Simple Scheduler: single-frequency scheduling
-    """
-
-    def configure_odmr_seq(self, *args, **kwargs):
-        pass
-
-    def _start_device(self, *args, **kwargs):
-        pass
-
-    def _acquire_data(self, *args, **kwargs):
-        pass
+#
+# class SimpleScheduler(Scheduler):
+#     """
+#     Simple Scheduler: single-frequency scheduling
+#     """
+#
+#     def configure_odmr_seq(self, *args, **kwargs):
+#         pass
+#
+#     def _start_device(self, *args, **kwargs):
+#         pass
+#
+#     def _acquire_data(self, *args, **kwargs):
+#         pass
 
 
 class ODMRScheduler(Scheduler):
+    """
+    ODMR measurement abstract class
+    """
+
     def __init__(self, *args, **kwargs):
         super(ODMRScheduler, self).__init__(*args, **kwargs)
         self.name = 'Base ODMR Scheduler'
@@ -385,13 +391,17 @@ class ODMRScheduler(Scheduler):
         self._data.clear()
         self._asg.start()
 
+        # restart self.counter
+        if not self.counter.isRunning():
+            self.counter.start()
+
         # 2. run MW then
         self._mw_instr.write_bool('OUTPUT:STATE', True)
-        if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
-            self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
-            raise warnings.warn('Using the SWEEP mode of MW', DeprecationWarning)
-            # self._mw_instr.write_str('SOUR:PULM:TRIG:MODE SING')
-            # self._mw_instr.write_str('SOUR:PULM:TRIG:IMM')
+        # if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
+        #     self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
+        #     raise warnings.warn('Using the SWEEP mode of MW', DeprecationWarning)
+        #       self._mw_instr.write_str('SOUR:PULM:TRIG:MODE SING')
+        #       self._mw_instr.write_str('SOUR:PULM:TRIG:IMM')
         print('MW on/off status:', self._mw_instr.instrument_status_checking)
 
     def _scan_freqs_and_get_data(self):
@@ -406,9 +416,11 @@ class ODMRScheduler(Scheduler):
             t.start()  # begin readout
             time.sleep(self.time_pad)
             t.join()
+        print('finished data acquisition')
 
     def run_scanning(self, mw_control='on'):
         """
+        Run the scheduler under scanning-frequency mode
         1) start device
         2) acquire data timely
         """
