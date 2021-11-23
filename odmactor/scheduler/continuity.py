@@ -99,6 +99,7 @@ class CWScheduler(ODMRScheduler):
 
     def _acquire_data(self, *args, **kwargs):
         # 1. scan freq
+        print('CW _acquire_data')
         self._scan_freqs_and_get_data()
         # 2. calculate result
         self._cal_counts_result()
@@ -267,6 +268,7 @@ class CWScheduler(ODMRScheduler):
         else:
             raise ValueError('unsupported mw_control parameter')
 
+        time.sleep(3)  # 先让激光和微波开几秒
         self.counter.start()
         time.sleep(self.time_pad)
         time.sleep(self.asg_dwell)

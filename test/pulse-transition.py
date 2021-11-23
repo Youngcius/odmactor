@@ -73,7 +73,7 @@ def counts_testing():
 
     res_on = scheduler.result
 
-    scheduler.run('off')
+    scheduler.run_scanning('off')
     # 自动重启各个仪器
     scheduler.close()
     res_off = scheduler.result
@@ -149,4 +149,5 @@ def wave_form():
 
 if __name__ == '__main__':
     # counts_testing()
-    wave_form()
+    # wave_form()
+    counts_testing()

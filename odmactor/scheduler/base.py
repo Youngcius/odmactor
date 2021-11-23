@@ -10,7 +10,7 @@ import numpy as np
 import TimeTagger as tt
 from RsInstrument import RsInstrument
 from odmactor.utils.asg import ASG
-from typing import List, Any
+from typing import List, Any, Mapping
 import scipy.constants as C
 from odmactor.utils.sequence import seq_to_str, seq_to_fig
 from odmactor.utils import cal_contrast
@@ -409,6 +409,7 @@ class ODMRScheduler(Scheduler):
         Sanning frequencies & getting data of Counter
         """
         for i, freq in enumerate(self._freqs):
+            self._mw_instr.write_float('FREQUENCY', freq)
             print('scanning freq {:.4f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
@@ -466,3 +467,7 @@ class SpinControlScheduler(Scheduler):
     def __init__(self, *args, **kwargs):
         super(SpinControlScheduler, self).__init__(*args, **kwargs)
         self.name = 'Base Spin Control Scheduler'
+
+
+if __name__=='__main__':
+    print('asdas')
