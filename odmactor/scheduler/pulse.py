@@ -61,7 +61,7 @@ class PulseScheduler(ODMRScheduler):
             --------------------| |---| |----
         All units for the parameters is 'ns'
         :param t_init: time span for laser initialization, e.g. 5000
-        :param t_mw: time span for microwave actual operation in a ASG period, e.g. 5000
+        :param t_mw: time span for microwave actual operation in a ASG period, e.g. 800
         :param t_read_sig: time span for fluorescence signal readout, e.g. 400
         :param t_read_ref: time span for reference signal readout, e.g. 400
                             if the parameter is not assigned, means single-pulse readout
