@@ -115,12 +115,12 @@ class PulseScheduler(ODMRScheduler):
             self._cal_contrasts_result()
             fname = os.path.join(self.output_dir,
                                  'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
-                                                                     round(time.time() / 120)))
+                                                                     round(time.time())))
         else:
             # just calculate counts
             self._cal_counts_result()
             fname = os.path.join(self.output_dir,
-                                 'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
+                                 'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time())))
         # 3. save result
         self.save_result(fname)
 

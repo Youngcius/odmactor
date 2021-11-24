@@ -151,6 +151,6 @@ def wave_form():
 
 
 if __name__ == '__main__':
-    contrast_testing()
+    # contrast_testing()
     # wave_form()
-    # counts_testing()
+    counts_testing()

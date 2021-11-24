@@ -309,7 +309,7 @@ class Scheduler(abc.ABC):
         if fname is None:
             fname = os.path.join(self.output_dir,
                                  '{}-result-{}-{}'.format(self.name, str(datetime.date.today()),
-                                                          round(time.time() / 120)))
+                                                          round(time.time())))
         with open(fname + '.json', 'w') as f:
             json.dump(self._result_detail, f)
         np.savetxt(fname + '.txt', self._result)

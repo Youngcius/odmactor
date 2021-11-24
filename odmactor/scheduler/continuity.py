@@ -241,7 +241,7 @@ class CWScheduler(ODMRScheduler):
         }
 
         fname = os.path.join(self.output_dir,
-                             'CW-ODMR-result-{}-{}'.format(str(datetime.date.today()), round(time.time() / 120)))
+                             'CW-ODMR-result-{}-{}'.format(str(datetime.date.today()), round(time.time())))
         with open(fname + '.pkl', 'wb') as f:
             pickle.dump(self._result_detail, f)
         np.savetxt(fname + '.txt', self._result)
