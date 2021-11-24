@@ -14,8 +14,8 @@ def cal_contrast(ls):
     """
     # Sequence location problems
     ls = np.array(ls)
-    # contrast = ls[::2] / ls[1::2]
-    contrast = np.abs(ls[::2].sum() - ls[1::2].sum()) / ls[1::2].sum()
+    # 以下分母 max 是为了避免 CounterBetweenMarker Measurement 采集的数据错位
+    contrast = np.abs(ls[::2].sum() - ls[1::2].sum()) / max(ls[1::2].sum(), ls[::2].sum())
     return contrast
     # if contrast.mean() > 1:
     #     contrast = 1 / contrast
