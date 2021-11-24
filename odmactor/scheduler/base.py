@@ -3,14 +3,12 @@ import datetime
 import time
 import json
 import os
-import warnings
-import threading
 import pickle
 import numpy as np
 import TimeTagger as tt
 from RsInstrument import RsInstrument
 from odmactor.utils.asg import ASG
-from typing import List, Any, Mapping
+from typing import List, Any
 import scipy.constants as C
 from odmactor.utils.sequence import seq_to_str, seq_to_fig
 from odmactor.utils import cal_contrast
@@ -361,114 +359,3 @@ def dBm_to_mW(dBm):
 
 def mW_to_dBm(mW):
     return 10 * np.log10(mW)
-
-#
-# class SimpleScheduler(Scheduler):
-#     """
-#     Simple Scheduler: single-frequency scheduling
-#     """
-#
-#     def configure_odmr_seq(self, *args, **kwargs):
-#         pass
-#
-#     def _start_device(self, *args, **kwargs):
-#         pass
-#
-#     def _acquire_data(self, *args, **kwargs):
-#         pass
-
-
-class ODMRScheduler(Scheduler):
-    """
-    ODMR measurement abstract class
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(ODMRScheduler, self).__init__(*args, **kwargs)
-        self.name = 'Base ODMR Scheduler'
-
-    def _start_device(self):
-        # 1. run ASG firstly
-        self._data.clear()
-        self._asg.start()
-
-        # restart self.counter
-        if not self.counter.isRunning():
-            self.counter.start()
-
-        # 2. run MW then
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
-        # if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
-        #     self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
-        #     raise warnings.warn('Using the SWEEP mode of MW', DeprecationWarning)
-        #       self._mw_instr.write_str('SOUR:PULM:TRIG:MODE SING')
-        #       self._mw_instr.write_str('SOUR:PULM:TRIG:IMM')
-        print('MW on/off status:', self._mw_instr.instrument_status_checking)
-
-    def _scan_freqs_and_get_data(self):
-        """
-        Sanning frequencies & getting data of Counter
-        """
-        for i, freq in enumerate(self._freqs):
-            self._mw_instr.write_float('FREQUENCY', freq)
-            print('scanning freq {:.4f} GHz'.format(freq / C.giga))
-            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
-            time.sleep(self.time_pad)
-            time.sleep(self.asg_dwell)  # accumulate counts
-            t.start()  # begin readout
-            time.sleep(self.time_pad)
-            t.join()
-        print('finished data acquisition')
-
-    def run_scanning(self, mw_control='on'):
-        """
-        Run the scheduler under scanning-frequency mode
-        1) start device
-        2) acquire data timely
-        """
-        mw_seq_on = self._asg_sequences[self.channel['mw'] - 1]
-        if mw_control == 'off':
-            # mw_seq_off = [0, sum(mw_seq_on)]
-            self._asg_sequences[self.channel['mw'] - 1] = [0, 0]
-            self.asg_connect_and_download_data(self._asg_sequences)
-        elif mw_control == 'on':
-            pass
-        else:
-            raise ValueError('unsupported MW control parameter (should be "or" or "off"')
-        print('Begin to run {}. Frequency: {:.4f} - {:.4f} GHz.'.format(self.name, self._freqs[0], self._freqs[-1]))
-        print('t: {:.2f} ns, N: {}, T: {:.2f} s, n_freqs: {}'.format(self._asg_conf['t'] / C.nano, self._asg_conf['N'],
-                                                                     self.mw_dwell, len(self._freqs)))
-        print('Estimated total running time: {:.2f} s'.format(self.time_total))
-        self._start_device()
-        self._acquire_data()
-        self.stop()
-
-        # 恢复微波的ASG的MW通道为 on
-        if mw_control == 'off':
-            self._asg_sequences[self.channel['mw'] - 1] = mw_seq_on
-            self.asg_connect_and_download_data(self._asg_sequences)
-
-    @abc.abstractmethod
-    def configure_odmr_seq(self, *args, **kwargs):
-        pass
-
-    @abc.abstractmethod
-    def _acquire_data(self, *args, **kwargs):
-        """
-        Acquire data in real time
-        """
-        raise NotImplemented
-
-
-class SpinControlScheduler(Scheduler):
-    """
-    Spin control abstract class
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(SpinControlScheduler, self).__init__(*args, **kwargs)
-        self.name = 'Base Spin Control Scheduler'
-
-
-if __name__=='__main__':
-    print('asdas')

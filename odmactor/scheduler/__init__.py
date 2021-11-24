@@ -1,7 +1,7 @@
-from odmactor.scheduler.base import Scheduler, ODMRScheduler
-from odmactor.scheduler.continuity import CWScheduler
-from odmactor.scheduler.pulse import PulseScheduler
+from odmactor.scheduler.base import Scheduler
+from odmactor.scheduler.odmr import CWScheduler, PulseScheduler
 from odmactor.scheduler.ramsey import RamseyScheduler
+from odmactor.scheduler.spin import SpinControlScheduler
 
 """
 Priority to be implemented: CW, Pulse, Ramsey, Rabi
