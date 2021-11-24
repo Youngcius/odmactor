@@ -24,6 +24,7 @@ def plot_freq_contrast(freqs, contrast, fname: str = None):
     plt.plot(freqs, contrast)
     plt.xlabel('frequency (GHz)')
     plt.ylabel('count contrast')
+    plt.title('Contrast')
     if fname is not None:
         plt.savefig(fname, dpi=400)
     plt.show()

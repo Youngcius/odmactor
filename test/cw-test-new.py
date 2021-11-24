@@ -59,7 +59,7 @@ class SingleFrequencyTest():
     def test_scanning(self):
         freq_start = 2.85 * C.giga
         freq_end = 2.89 * C.giga
-        freq_step = 1 * C.mega
+        freq_step = 10 * C.mega
         p = 10
         # 通道、微波、序列、counter
         scheduler = CWScheduler()
@@ -79,6 +79,7 @@ class SingleFrequencyTest():
         plt.figure()
         plt.plot(*res_on, label='MW on')
         plt.plot(*res_off, label='MW off')
+        plt.legend()
         plt.title('Counts comparison')
         plt.savefig('counts_on_off (CW)', dpi=400)
 
@@ -104,8 +105,8 @@ if __name__ == '__main__':
     st = SingleFrequencyTest()
     # st.test_single_freq(1)
 
-    st.test_single_freq(10, 2.87)
-    print('==='*10)
-    st.test_single_freq(10, 2.85)
+    # st.test_single_freq(10, 2.87)
+    # print('==='*10)
+    # st.test_single_freq(10, 2.85)
 
-    # st.test_scanning()
+    st.test_scanning()
