@@ -1,5 +1,7 @@
 """
 Spin manipulation classes
+---
+
 """
 
 from odmactor.scheduler.base import Scheduler

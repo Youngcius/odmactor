@@ -1,12 +1,11 @@
+"""
+Utils functions processing ASG sequences
+"""
 import math
 from functools import reduce
 from typing import List
 from operator import concat
 import matplotlib.pyplot as plt
-
-"""
-Utils functions processing ASG sequences
-"""
 
 
 class SequenceString:
@@ -87,7 +86,7 @@ def seq_to_str(seq: List[List[float]]):
     """
     idx_exist = [i for i, l in enumerate(seq) if sum(l) > 0]
 
-    # flatten, to integer, calculate gcd
+    # flatten; float --> integer; calculate gcd
     gcd = reduce(math.gcd, list(map(int, reduce(concat, seq))))
 
     str_dict = {'channel {}'.format(i + 1): SequenceString() for i in idx_exist}
