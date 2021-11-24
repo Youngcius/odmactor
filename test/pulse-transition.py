@@ -15,7 +15,7 @@ Steps:
 
 freq_start = 2.85 * C.giga
 freq_end = 2.89 * C.giga
-freq_step = 2 * C.mega
+freq_step = 1 * C.mega
 
 ##########################
 # e.g.
@@ -24,7 +24,7 @@ freq_step = 2 * C.mega
 # MW period at each freq: 5*N ~ 0.5s
 # total time: 5 * N * 10(11) ~ 5 s
 ##########################
-N = int(1e4)
+N = int(1e5)
 channel_dict = {
     'laser': 1,
     'mw': 2,
@@ -34,8 +34,8 @@ channel_dict = {
 tagger_input = {'apd': 1, 'asg': 2}
 
 t_init = 3e3
-t_mw = 5e3
-inter_init_mw = 200
+t_mw = 800
+inter_init_mw = 5e3
 
 
 # transition_time = 0.0  # 平衡过渡时间
@@ -50,10 +50,11 @@ def contrast_testing():
     scheduler.set_mw_freqs(freq_start, freq_end, freq_step)
     scheduler.configure_tagger_counting(reader='cbm')
     scheduler.run()
+    scheduler.save_result('pulse-result-1123')
     scheduler.close()
     # with open('seq.txt', 'w') as f:
     #     f.write(scheduler.sequences_strings)
-    scheduler.sequences_figure.save('pulse-seq.png', dpi=400)
+    scheduler.sequences_figure.savefig('pulse-seq.png', dpi=400)
 
     plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
 
@@ -64,6 +65,8 @@ def counts_testing():
     scheduler.tagger_input = tagger_input
     scheduler.configure_mw_paras(power=10)
     scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, inter_init_mw=inter_init_mw, N=N)
+    scheduler.sequences_figure.savefig('pulse-seq.png', dpi=400)
+
     scheduler.set_mw_freqs(freq_start, freq_end, freq_step)
     scheduler.configure_tagger_counting(reader='cbm')
 
@@ -148,6 +151,6 @@ def wave_form():
 
 
 if __name__ == '__main__':
-    # counts_testing()
+    contrast_testing()
     # wave_form()
-    counts_testing()
+    # counts_testing()

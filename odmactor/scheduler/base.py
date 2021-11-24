@@ -285,6 +285,7 @@ class Scheduler(abc.ABC):
             self.time_total = self.mw_dwell * len(self._freqs)
 
     def _cal_counts_result(self):
+        print('计算了结果！')
         counts = [np.mean(ls) for ls in self._data]
         self._result = [self._freqs, counts]
         self._result_detail = {
