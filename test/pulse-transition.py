@@ -33,9 +33,9 @@ channel_dict = {
 }
 tagger_input = {'apd': 1, 'asg': 2}
 
-t_init = 2e4
-t_mw = 5e4
-inter_init_mw = 1e4
+t_init = 3e3
+t_mw = 5e3
+inter_init_mw = 200
 
 
 # transition_time = 0.0  # 平衡过渡时间

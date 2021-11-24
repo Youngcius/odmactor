@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-
 from odmactor.scheduler import CWScheduler
 import scipy.constants as C
 import unittest
