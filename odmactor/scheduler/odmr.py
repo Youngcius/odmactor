@@ -58,6 +58,17 @@ class ODMRScheduler(Scheduler):
         self._mw_instr.write_bool('OUTPUT:STATE', True)
         print('MW on/off status:', self._mw_instr.instrument_status_checking)
 
+    def _single_freq_get_data(self):
+        # print('scanning freq {:.4f} GHz'.format(freq / C.giga))
+        print(self.asg_dwell)
+        t = threading.Thread(target=self._get_data)
+        time.sleep(self.time_pad)
+        time.sleep(self.asg_dwell)  # accumulate counts
+        t.start()  # begin readout
+        time.sleep(self.time_pad)
+        t.join()
+
+
     def _scan_freqs_and_get_data(self):
         """
         Sanning frequencies & getting data of Counter
@@ -368,7 +379,7 @@ class PulseScheduler(ODMRScheduler):
         self._asg_sequences[idx_laser_channel] = laser_seq
         self._asg_sequences[idx_mw_channel] = mw_seq
         self._asg_sequences[idx_tagger_channel] = tagger_seq
-        self._asg_sequences[idx_apd_channel] = [t, 0]
+        self._asg_sequences[idx_apd_channel] = tagger_seq
 
         # connect & download pulse data
         self.asg_connect_and_download_data(self._asg_sequences)
@@ -378,18 +389,27 @@ class PulseScheduler(ODMRScheduler):
         Default setting: save file into text files.
         """
         # 1. scan freq
-        self._scan_freqs_and_get_data()
-        # 2. calculate result (count or contrast)
-        if self.two_pulse_readout:
-            # calculate contrasts
-            self._cal_contrasts_result()
-            fname = os.path.join(self.output_dir,
-                                 'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
-                                                                     round(time.time())))
+        print(self.scan)
+        if self.scan:
+            self._scan_freqs_and_get_data()
         else:
+            self._single_freq_get_data()
+        # 2. calculate result (count or contrast)
+        # if self.two_pulse_readout:
+            # calculate contrasts
+            # self._cal_contrasts_result()
+            # fname = os.path.join(self.output_dir,
+            #                      'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
+            #                                                          round(time.time())))
+        # else:
             # just calculate counts
-            self._cal_counts_result()
-            fname = os.path.join(self.output_dir,
-                                 'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time())))
+            # self._cal_counts_result()
+            # fname = os.path.join(self.output_dir,
+            #                      'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time())))
         # 3. save result
-        self.save_result(fname)
+        # if self.scan:
+            # self.save_result(fname)
+        print(len(self._data), len(self._data[0]))
+        # print(self._data[0])
+        np.savetxt('data.txt', np.array(self._data).ravel())
+        # print(self.result)
