@@ -70,7 +70,7 @@ class ODMRScheduler(Scheduler):
             time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
             time.sleep(self.time_pad)
-            t.join()
+            # t.join()
         print('finished data acquisition')
 
     def run_scanning(self, mw_control='on'):
