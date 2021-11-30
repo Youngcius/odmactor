@@ -58,6 +58,20 @@ def contrast_testing():
 
     plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
 
+def single_freq_testing(freq):
+    scheduler = PulseScheduler()
+    scheduler.channel = channel_dict
+    scheduler.tagger_input = tagger_input
+    scheduler.configure_mw_paras(power=10, freq=freq)
+    scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, t_read_ref=400, inter_init_mw=inter_init_mw, N=N)
+    scheduler.configure_tagger_counting(reader='cbm')
+    scheduler.run(scan=False)
+    scheduler.save_result('pulse-result-single-freq')
+    scheduler.close()
+    # with open('seq.txt', 'w') as f:
+    #     f.write(scheduler.sequences_strings)
+
+    # plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
 
 def counts_testing():
     scheduler = PulseScheduler()
@@ -149,8 +163,20 @@ def wave_form():
     scheduler.sequences_figure.savefig('seq.png', dpi=400)
     scheduler.close()
 
+import numpy as np
 
 if __name__ == '__main__':
     # contrast_testing()
     # wave_form()
-    counts_testing()
+    # counts_testing()
+    single_freq_testing(2.85e9)
+    data = np.loadtxt('data.txt')
+    sig = data[::2]
+    ref = data[1::2]
+
+    plt.hist(sig, bins=15)
+    plt.hist(ref, bins=15)
+    plt.show()
+    sigavg = np.mean(sig)
+    refavg = np.mean(ref)
+    print(sigavg, refavg)

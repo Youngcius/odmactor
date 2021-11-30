@@ -190,11 +190,12 @@ class Scheduler(abc.ABC):
         self._data.append(self.counter.getData().ravel().tolist())
         self.counter.clear()
 
-    def run(self):
+    def run(self, scan=True):
         """
         1) start device
         2) acquire data timely
         """
+        self.scan = scan
         self._start_device()
         self._acquire_data()
         self.stop()
@@ -302,16 +303,17 @@ class Scheduler(abc.ABC):
         }
 
     def save_result(self, fname: str = None):
-        if not self._result or not self._result_detail:
-            raise ValueError('empty result cannot be saved')
-        if fname is None:
-            fname = os.path.join(self.output_dir,
-                                 '{}-result-{}-{}'.format(self.name, str(datetime.date.today()),
-                                                          round(time.time())))
-        with open(fname + '.json', 'w') as f:
-            json.dump(self._result_detail, f)
-        np.savetxt(fname + '.txt', self._result)
-        print('result has been saved into {}'.format(fname + '.json'))
+        if self.scan:
+            if not self._result or not self._result_detail:
+                raise ValueError('empty result cannot be saved')
+            if fname is None:
+                fname = os.path.join(self.output_dir,
+                                     '{}-result-{}-{}'.format(self.name, str(datetime.date.today()),
+                                                              round(time.time())))
+            with open(fname + '.json', 'w') as f:
+                json.dump(self._result_detail, f)
+            np.savetxt(fname + '.txt', self._result)
+            print('result has been saved into {}'.format(fname + '.json'))
 
     def __str__(self):
         return self.name
