@@ -166,17 +166,17 @@ def wave_form():
 import numpy as np
 
 if __name__ == '__main__':
-    # contrast_testing()
+    contrast_testing()
     # wave_form()
     # counts_testing()
-    single_freq_testing(2.85e9)
-    data = np.loadtxt('data.txt')
-    sig = data[::2]
-    ref = data[1::2]
-
-    plt.hist(sig, bins=15)
-    plt.hist(ref, bins=15)
-    plt.show()
-    sigavg = np.mean(sig)
-    refavg = np.mean(ref)
-    print(sigavg, refavg)
+    # single_freq_testing(2.85e9)
+    # data = np.loadtxt('data.txt')
+    # sig = data[::2]
+    # ref = data[1::2]
+    #
+    # plt.hist(sig, bins=15)
+    # plt.hist(ref, bins=15)
+    # plt.show()
+    # sigavg = np.mean(sig)
+    # refavg = np.mean(ref)
+    # print(sigavg, refavg)
