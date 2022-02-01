@@ -12,7 +12,7 @@ import pickle
 Rabi oscillation measurement
 ---
 1. fix the power of MW & freq
-2. set the range of MW duration time, for sanning
+2. set the range of MW duration time, for scanning
 3. repeat execution at each duration time point
 """
 
@@ -124,7 +124,7 @@ class RabiScheduler(Scheduler):
         data = self.counter.getData()  # [N*2,]
         return data.tolist()
 
-    def run(self):
+    def run(self, *args, **kwargs):
         """
         iteration: scanning MW operation time (ASG MW channel):
             1) start devices

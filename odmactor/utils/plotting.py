@@ -15,13 +15,14 @@ def plot_ramsey():
 
 def plot_freq_contrast(freqs, contrast, fname: str = None):
     """
-
+    Plot counting contrast figure along with frequencies
     :param freqs: frequencies, unit: GHz
     :param contrast: contrast, range between 0 and 1
+    :param fname: if assigned, a '.png' file will be saved
     """
     plt.style.use('seaborn')
     plt.figure()
-    plt.plot(freqs, contrast)
+    plt.plot(freqs, contrast, 'o-')
     plt.xlabel('frequency (GHz)')
     plt.ylabel('count contrast')
     plt.title('Contrast')

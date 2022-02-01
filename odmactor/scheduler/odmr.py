@@ -68,10 +68,9 @@ class ODMRScheduler(Scheduler):
         time.sleep(self.time_pad)
         t.join()
 
-
     def _scan_freqs_and_get_data(self):
         """
-        Sanning frequencies & getting data of Counter
+        Scanning frequencies & getting data of Counter
         """
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
@@ -98,13 +97,14 @@ class ODMRScheduler(Scheduler):
         elif mw_control == 'on':
             pass
         else:
-            raise ValueError('unsupported MW control parameter (should be "or" or "off"')
-        print('Begin to run {}. Frequency: {:.4f} - {:.4f} GHz.'.format(self.name, self._freqs[0], self._freqs[-1]))
+            raise ValueError('unsupported MW control parameter (should be "on" or "off"')
+        print('Begin to run {}. Frequency: {:.4f} - {:.4f} GHz.'.format(self.name, self._freqs[0] / C.giga,
+                                                                        self._freqs[-1] / C.giga))
         print('t: {:.2f} ns, N: {}, T: {:.2f} s, n_freqs: {}'.format(self._asg_conf['t'] / C.nano, self._asg_conf['N'],
                                                                      self.mw_dwell, len(self._freqs)))
         print('Estimated total running time: {:.2f} s'.format(self.time_total))
         self._start_device()
-        self._acquire_data()
+        self._acquire_data()  # 扫频的 loop 在这个函数中实现
         self.stop()
 
         # 恢复微波的ASG的MW通道为 on
@@ -172,7 +172,7 @@ class CWScheduler(ODMRScheduler):
     def _acquire_data(self, *args, **kwargs):
         # 1. scan freq
         print('CW _acquire_data')
-        self._scan_freqs_and_get_data()
+        self._scan_freqs_and_get_data()  # 扫频 loop 在这个函数中进一步实现
         # 2. calculate result
         self._cal_counts_result()
         # 3. save result
@@ -322,7 +322,7 @@ class PulseScheduler(ODMRScheduler):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
         self.two_pulse_readout = False
-        # self.transition_time = transition_time  # 计数过渡到平衡时的时间（开关微波时）
+        # self.transition_time = transition_time  # 计数过渡到平衡时的时间（开关微波时） TODO: delete this line
 
     def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000,
                            inter_readout=200, inter_period=200, N: int = 1000):
@@ -375,11 +375,11 @@ class PulseScheduler(ODMRScheduler):
         idx_tagger_channel = self.channel['tagger'] - 1
         idx_apd_channel = self.channel['apd'] - 1
 
-        self._asg_sequences = [[0, 0] for i in range(8)]
+        self.reset_asg_sequence()
         self._asg_sequences[idx_laser_channel] = laser_seq
         self._asg_sequences[idx_mw_channel] = mw_seq
         self._asg_sequences[idx_tagger_channel] = tagger_seq
-        self._asg_sequences[idx_apd_channel] = tagger_seq
+        self._asg_sequences[idx_apd_channel] = tagger_seq # TODO: APD 是不是应该没有间隔
 
         # connect & download pulse data
         self.asg_connect_and_download_data(self._asg_sequences)
@@ -395,20 +395,20 @@ class PulseScheduler(ODMRScheduler):
         else:
             self._single_freq_get_data()
         # 2. calculate result (count or contrast)
-        # if self.two_pulse_readout:
+        if self.two_pulse_readout:
             # calculate contrasts
-            # self._cal_contrasts_result()
-            # fname = os.path.join(self.output_dir,
-            #                      'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
-            #                                                          round(time.time())))
-        # else:
+            self._cal_contrasts_result()
+            fname = os.path.join(self.output_dir,
+                                 'Pulse-ODMR-contrasts-{}-{}'.format(str(datetime.date.today()),
+                                                                     round(time.time())))
+        else:
             # just calculate counts
-            # self._cal_counts_result()
-            # fname = os.path.join(self.output_dir,
-            #                      'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time())))
+            self._cal_counts_result()
+            fname = os.path.join(self.output_dir,
+                                 'Pulse-ODMR-counts-{}-{}'.format(str(datetime.date.today()), round(time.time())))
         # 3. save result
-        # if self.scan:
-            # self.save_result(fname)
+        if self.scan:
+            self.save_result(fname)
         print(len(self._data), len(self._data[0]))
         # print(self._data[0])
         np.savetxt('data.txt', np.array(self._data).ravel())

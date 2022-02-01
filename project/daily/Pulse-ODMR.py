@@ -1,7 +1,7 @@
-from scheduler.pulse import PulseScheduler
+from odmactor.scheduler import PulseScheduler
 import scipy.constants as C
 import time
-from utils.plotting import plot_freq_contrast
+from odmactor.utils.plotting import plot_freq_contrast
 
 freq_start = 2.8 * C.giga
 freq_end = 2.9 * C.giga

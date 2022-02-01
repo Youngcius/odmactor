@@ -34,7 +34,7 @@ class Scheduler(abc.ABC):
         self._freqs = []
         self._asg_sequences = []
         self.reset_asg_sequence()
-        self._asg_conf = {'t': None, 'N': None}
+        self._asg_conf = {'t': None, 'N': None}  # 就是为了计算 asg_dwell 而控制采样时间而已
         self._configuration = {}
         self._laser_control = True
         self._mw_instr = RsInstrument('USB0::0x0AAD::0x0054::104174::INSTR', True, True)
@@ -215,7 +215,6 @@ class Scheduler(abc.ABC):
         print('All instrument resources has been released')
 
     def configure_mw_paras(self, power: float = None, freq: float = None, regulate_pi: bool = False, *args, **kwargs):
-        # TODO: check 'float' type
         if power is not None:
             self._mw_instr.write_float('POW', power)
             if regulate_pi:  # regulate time duration based on MW power
@@ -242,6 +241,9 @@ class Scheduler(abc.ABC):
             self.pi_pulse['time'] = time
 
     def reset_asg_sequence(self):
+        """
+        Reset all channels of ASG as ZERO signals
+        """
         self._asg_sequences = [[0, 0] for i in range(8)]
 
     def save_configuration(self, fname: str = None):

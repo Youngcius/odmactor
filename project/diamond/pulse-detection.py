@@ -1,8 +1,12 @@
+"""
+Create date: 2022-01-01
+Test object: diamond bulk
+"""
+
 from odmactor.scheduler import PulseScheduler
 import scipy.constants as C
 import time
 import matplotlib.pyplot as plt
-import unittest
 from odmactor.utils.plotting import plot_freq_contrast
 
 """
@@ -58,6 +62,7 @@ def contrast_testing():
 
     plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
 
+
 def single_freq_testing(freq):
     scheduler = PulseScheduler()
     scheduler.channel = channel_dict
@@ -73,13 +78,14 @@ def single_freq_testing(freq):
 
     # plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
 
+
 def counts_testing():
     scheduler = PulseScheduler()
     scheduler.channel = channel_dict
     scheduler.tagger_input = tagger_input
     scheduler.configure_mw_paras(power=10)
     scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, inter_init_mw=inter_init_mw, N=N)
-    scheduler.sequences_figure.savefig('pulse-seq.png', dpi=400)
+    scheduler.sequences_figure.savefig('pulse-seq-test.png', dpi=400)
 
     scheduler.set_mw_freqs(freq_start, freq_end, freq_step)
     scheduler.configure_tagger_counting(reader='cbm')
@@ -105,52 +111,6 @@ def counts_testing():
     plot_freq_contrast(res_on[0], contrasts, fname='contrasts-single-pulse-repetition')
 
 
-#
-# class PulseTest(unittest.TestCase):
-#     # def test_scanning_freqs_single_readout(self):
-#     #     scheduler = PulseScheduler(transition_time=transition_time)
-#     #     scheduler.channel = channel_dict
-#     #     scheduler.tagger_input = tagger_input
-#     #     scheduler.configure_mw_paras(power=10)
-#     #     scheduler.configure_odmr_seq(t_init, t_mw, inter_init_mw, N=N)
-#     #     print('当前序列：')
-#     #     print(scheduler.sequences_strings)
-#     #     print()
-#     #     scheduler.set_mw_scan_freq_start_stop(freq_start, freq_end, freq_step)
-#     #     scheduler.configure_tagger_counting()
-#     #
-#     #     scheduler.run('on')
-#     #     scheduler.close()
-#     #     res_on = scheduler.result
-#     #
-#     #     scheduler.run('off')
-#     #     scheduler.close()
-#     #     res_off = scheduler.result
-#     #
-#     #     contrasts = [abs(c_off - c_on) / c_on for c_on, c_off in zip(res_on[1], res_off[1])]
-#     #
-#     #     plt.plot(*res_on, label='MW on')
-#     #     plt.plot(*res_off, label='MW off')
-#     #     plt.title('Counts comparison')
-#     #     plt.savefig('counts_on_off', dpi=400)
-#     #
-#     #     plot_freq_contrast(res_on[0], contrasts, fname='contrasts-two-pulse')
-#
-#     def test_scanning_freqs_two_pulse_readout(self):
-#         scheduler = PulseScheduler(transition_time=transition_time)
-#         scheduler.channel = channel_dict
-#         scheduler.tagger_input = tagger_input
-#         scheduler.configure_mw_paras(power=10)
-#         scheduler.configure_odmr_seq(t_init, t_mw, inter_init_mw, N=N)
-#         scheduler.configure_tagger_counting(reader='cbm')
-#         scheduler.run()
-#         scheduler.close()
-#
-#         plot_freq_contrast(*scheduler.result, fname='contrasts-two-pulse')
-#
-
-# if __name__ == '__main__':
-#     unittest.main()
 def wave_form():
     scheduler = PulseScheduler()
     scheduler.channel = channel_dict
