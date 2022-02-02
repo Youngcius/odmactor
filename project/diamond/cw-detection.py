@@ -63,7 +63,7 @@ class SingleFrequencyTest():
     def test_scanning(self):
         freq_start = 2.85 * C.giga
         freq_end = 2.89 * C.giga
-        freq_step = 10 * C.mega
+        freq_step = 2 * C.mega
         p = 10
         # 通道、微波、序列、counter
         scheduler = CWScheduler()

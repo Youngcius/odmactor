@@ -68,13 +68,44 @@ class ODMRScheduler(Scheduler):
         time.sleep(self.time_pad)
         t.join()
 
-    def _scan_freqs_and_get_data(self):
+    def _scan_freqs_and_get_data_with_ref(self):
         """
         Scanning frequencies & getting data of Counter
         """
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
             print('scanning freq {:.4f} GHz'.format(freq / C.giga))
+            #################################
+            # 1. MW on
+            self._mw_instr.write_bool('OUTPUT:STATE', True)
+            print('MW on/off status:', self._mw_instr.instrument_status_checking)
+
+            t = threading.Thread(target=self._get_data, name='thread-on-{}'.format(i))
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)  # accumulate counts
+            t.start()  # begin readout
+            time.sleep(self.time_pad)
+
+
+            # 2. MW off
+            self._mw_instr.write_bool('OUTPUT:STATE', False)
+            print('MW on/off status:', self._mw_instr.instrument_status_checking)
+            t = threading.Thread(target=self._get_data_ref, name='thread-off-{}'.format(i))
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)  # accumulate counts
+            t.start()  # begin readout
+            time.sleep(self.time_pad)
+
+            # t.join()
+        print('finished data acquisition')
+
+    def _scan_freqs_and_get_data(self):
+        """
+        Scanning frequencies & getting data of Counter
+        """
+        for i, freq in enumerate(self._freqs):
+            self._mw_instr.write_float('FREQUENCY', freq)
+            print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
@@ -104,7 +135,13 @@ class ODMRScheduler(Scheduler):
                                                                      self.mw_dwell, len(self._freqs)))
         print('Estimated total running time: {:.2f} s'.format(self.time_total))
         self._start_device()
-        self._acquire_data()  # 扫频的 loop 在这个函数中实现
+
+        # self._acquire_data()  # 扫频的 loop 在这个函数中实现
+
+        # modified
+        self._acquire_data_with_ref()
+
+
         self.stop()
 
         # 恢复微波的ASG的MW通道为 on
@@ -122,7 +159,11 @@ class ODMRScheduler(Scheduler):
         Acquire data in real time
         """
         raise NotImplemented
-
+    def _acquire_data_with_ref(self, *args, **kwargs):
+        """
+        Acquire data in real time
+        """
+        raise NotImplemented
 
 class CWScheduler(ODMRScheduler):
     """
@@ -177,6 +218,16 @@ class CWScheduler(ODMRScheduler):
         self._cal_counts_result()
         # 3. save result
         self.save_result()
+
+    def _acquire_data_with_ref(self, *args, **kwargs):
+        # 1. scan freq
+        print('CW _acquire_data_with_ref')
+        self._scan_freqs_and_get_data_with_ref()  # 扫频 loop 在这个函数中进一步实现
+        # 2. calculate result
+        self._cal_counts_result_with_ref()
+        # 3. save result
+        self.save_result()
+
 
     def run_origin(self, mw_control='on'):
         """
@@ -379,7 +430,7 @@ class PulseScheduler(ODMRScheduler):
         self._asg_sequences[idx_laser_channel] = laser_seq
         self._asg_sequences[idx_mw_channel] = mw_seq
         self._asg_sequences[idx_tagger_channel] = tagger_seq
-        self._asg_sequences[idx_apd_channel] = tagger_seq # TODO: APD 是不是应该没有间隔
+        self._asg_sequences[idx_apd_channel] = tagger_seq  # TODO: APD 是不是应该没有间隔
 
         # connect & download pulse data
         self.asg_connect_and_download_data(self._asg_sequences)

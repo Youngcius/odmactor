@@ -20,3 +20,4 @@ def cal_contrast(ls):
     # if contrast.mean() > 1:
     #     contrast = 1 / contrast
     # return contrast.tolist()
+

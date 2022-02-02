@@ -26,6 +26,7 @@ class Scheduler(abc.ABC):
     def __init__(self, *args, **kwargs):
         self._cache: Any = None
         self._data = []
+        self._data_ref = []
         self.name = 'Base Scheduler'
         # pi pulse, for spin manipulation
         self.pi_pulse = {'freq': None, 'power': None, 'time': None}  # unit: Hz, dBm, s
@@ -190,6 +191,10 @@ class Scheduler(abc.ABC):
         self._data.append(self.counter.getData().ravel().tolist())
         self.counter.clear()
 
+    def _get_data_ref(self):
+        self._data_ref.append(self.counter.getData().ravel().tolist())
+        self.counter.clear()
+
     def run(self, scan=True):
         """
         1) start device
@@ -295,6 +300,21 @@ class Scheduler(abc.ABC):
             'origin_data': self._data
         }
 
+    def _cal_counts_result_with_ref(self):
+        counts = [np.mean(ls) for ls in self._data]
+        counts_ref = [np.mean(ls) for ls in self._data_ref]
+        res = [(s) / r for s, r in zip(counts, counts_ref)]
+        self._result = [self._freqs, counts, counts_ref]
+        self.res = res
+        self._result_detail = {
+            'freqs': self._freqs,
+            'counts': counts,
+            'counts_ref': counts_ref,
+            'origin_data': self._data,
+            'origin_data_ref': self._data_ref
+
+        }
+
     def _cal_contrasts_result(self):
         contrasts = [cal_contrast(ls) for ls in self._data]
         self._result = [self._freqs, contrasts]
@@ -314,7 +334,8 @@ class Scheduler(abc.ABC):
                                                           round(time.time())))
         with open(fname + '.json', 'w') as f:
             json.dump(self._result_detail, f)
-        np.savetxt(fname + '.txt', self._result)
+        # print(np.array(self._result).shape)
+        # np.savetxt(fname + '.txt', np.array(self._result).astype(float))
         print('result has been saved into {}'.format(fname + '.json'))
 
     def __str__(self):
