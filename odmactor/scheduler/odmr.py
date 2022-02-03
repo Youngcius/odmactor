@@ -78,7 +78,7 @@ class ODMRScheduler(Scheduler):
             #################################
             # 1. MW on
             self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('MW on/off status:', self._mw_instr.instrument_status_checking)
+            # print('MW on/off status:', self._mw_instr.instrument_status_checking)
 
             t = threading.Thread(target=self._get_data, name='thread-on-{}'.format(i))
             time.sleep(self.time_pad)
@@ -89,7 +89,7 @@ class ODMRScheduler(Scheduler):
 
             # 2. MW off
             self._mw_instr.write_bool('OUTPUT:STATE', False)
-            print('MW on/off status:', self._mw_instr.instrument_status_checking)
+            # print('MW on/off status:', self._mw_instr.instrument_status_checking)
             t = threading.Thread(target=self._get_data_ref, name='thread-off-{}'.format(i))
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
@@ -129,7 +129,7 @@ class ODMRScheduler(Scheduler):
             pass
         else:
             raise ValueError('unsupported MW control parameter (should be "on" or "off"')
-        print('Begin to run {}. Frequency: {:.4f} - {:.4f} GHz.'.format(self.name, self._freqs[0] / C.giga,
+        print('Begin to run {}. Frequency: {:.3f} - {:.3f} GHz.'.format(self.name, self._freqs[0] / C.giga,
                                                                         self._freqs[-1] / C.giga))
         print('t: {:.2f} ns, N: {}, T: {:.2f} s, n_freqs: {}'.format(self._asg_conf['t'] / C.nano, self._asg_conf['N'],
                                                                      self.mw_dwell, len(self._freqs)))
@@ -411,12 +411,14 @@ class PulseScheduler(ODMRScheduler):
             laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig + inter_readout + t_read_ref, inter_period]
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_readout + t_read_ref + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_readout, t_read_ref, inter_period]
+            # apd_seq = [sum(tagger_seq[:-4]), sum(tagger_seq[-4:])]
         else:
             # single-pulse readout
             t = t_init + inter_init_mw + t_mw + t_read_sig + inter_period
             laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig, inter_period]
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_period]
+            # apd_seq = [sum(tagger_seq[:-2], sum(tagger_seq[-2:]))]
 
         self._conf_time_paras(t, N)
 
@@ -430,7 +432,7 @@ class PulseScheduler(ODMRScheduler):
         self._asg_sequences[idx_laser_channel] = laser_seq
         self._asg_sequences[idx_mw_channel] = mw_seq
         self._asg_sequences[idx_tagger_channel] = tagger_seq
-        self._asg_sequences[idx_apd_channel] = tagger_seq  # TODO: APD 是不是应该没有间隔
+        # self._asg_sequences[idx_apd_channel] = apd_seq  # TODO: check this modification
 
         # connect & download pulse data
         self.asg_connect_and_download_data(self._asg_sequences)
@@ -440,11 +442,13 @@ class PulseScheduler(ODMRScheduler):
         Default setting: save file into text files.
         """
         # 1. scan freq
-        print(self.scan)
+        self.scan = True # TODO:refactor this
         if self.scan:
             self._scan_freqs_and_get_data()
         else:
             self._single_freq_get_data()
+
+
         # 2. calculate result (count or contrast)
         if self.two_pulse_readout:
             # calculate contrasts
@@ -462,5 +466,13 @@ class PulseScheduler(ODMRScheduler):
             self.save_result(fname)
         print(len(self._data), len(self._data[0]))
         # print(self._data[0])
-        np.savetxt('data.txt', np.array(self._data).ravel())
+        # np.savetxt('data.txt', np.array(self._data).ravel())
         # print(self.result)
+    def _acquire_data_with_ref(self, *args, **kwargs):
+        # 1. scan freq
+        print('Pulse _acquire_data_with_ref')
+        self._scan_freqs_and_get_data_with_ref()  # 扫频 loop 在这个函数中进一步实现
+        # 2. calculate result
+        self._cal_counts_result_with_ref()
+        # 3. save result
+        self.save_result()

@@ -70,7 +70,7 @@ def seq_to_fig(seq: List[List[float]]):
     fig = plt.figure(figsize=(14, 2 * len(idx_exist)))
     for i, ch in enumerate(channels):
         plt.stairs(levels[i], baseline=baselines[i], label=ch)
-    plt.legend()
+    plt.legend(loc='upper left')
     plt.title('Sequences')
     plt.ylabel('channel')
     plt.xlabel('time ({} ns)'.format(int(gcd)))

@@ -25,10 +25,10 @@ class ASG8005:
 
         if arch == '64bit':
             dll_path = os.path.join(wd, 'ASGDLL_x64.dll')
-            print(" USE ASGDLL_x64.dll ")
+            print("--- USE ASGDLL_x64.dll ---")
         else:
             dll_path = os.path.join(wd, 'ASGDLL_x86.dll')
-            print(" USE ASGDLL_x86.dll ")
+            print("--- USE ASGDLL_x86.dll ---")
 
         if os.path.isfile(dll_path):
             self.__dll = CDLL(dll_path)
