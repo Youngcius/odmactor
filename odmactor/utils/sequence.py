@@ -6,6 +6,7 @@ from functools import reduce
 from typing import List
 from operator import concat
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 
 class SequenceString:
@@ -40,7 +41,7 @@ class SequenceString:
         return '\n'.join(self.strings)
 
 
-def seq_to_fig(seq: List[List[float]]):
+def seq_to_fig(seq: List[List[float]]) -> Figure:
     """
     Convert sequences (list of list) into a Figure instance
     """
@@ -80,7 +81,7 @@ def seq_to_fig(seq: List[List[float]]):
     return fig
 
 
-def seq_to_str(seq: List[List[float]]):
+def seq_to_str(seq: List[List[float]]) -> str:
     """
     Convert sequences (list of list) into a string
     """

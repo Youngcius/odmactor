@@ -21,3 +21,10 @@ def cal_contrast(ls):
     #     contrast = 1 / contrast
     # return contrast.tolist()
 
+
+def dBm_to_mW(dBm):
+    return 10 ** (dBm / 10)
+
+
+def mW_to_dBm(mW):
+    return 10 * np.log10(mW)

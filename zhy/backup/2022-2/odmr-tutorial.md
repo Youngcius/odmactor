@@ -37,7 +37,7 @@ asg tagger acquisition channel:
 --------------------| |---| |----
 ```
 
-![](../test/pulse-seq.png)
+![](../../test/pulse-seq.png)
 
 
 ### Necessary parameters
