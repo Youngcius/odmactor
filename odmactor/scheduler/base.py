@@ -73,8 +73,10 @@ class Scheduler(abc.ABC):
         is_connected = self._asg.connect()  # auto stop
         if is_connected == 1:
             self._asg.download_ASG_pulse_data(asg_data, [len(row) for row in asg_data])
+        else:
+            raise ConnectionError('ASG not connected')
 
-    def _download_asg_sequences(self, laser_seq: List[int], mw_seq: List[int], tagger_seq: List[int], N: int):
+    def _download_asg_sequences(self, laser_seq: List[int]=None, mw_seq: List[int]=None, tagger_seq: List[int]=None, N: int=100000):
         """
         Download control sequences into the memory of ASG
         :param laser_seq: laser control sequence
@@ -82,20 +84,23 @@ class Scheduler(abc.ABC):
         :param tagger_seq: tagger readout control sequence
         :param N: repetition number of sequences periods for each detection point
         """
-        assert sum(laser_seq) == sum(mw_seq) == sum(tagger_seq), "Length of pulse sequences are not equal in a period!"
+        # assert sum(laser_seq) == sum(mw_seq) == sum(tagger_seq), "Length of pulse sequences are not equal in a period!"
         t = sum(laser_seq)
 
         # configure ASG period information
         self._conf_time_paras(t, N)
 
         idx_laser_channel = self.channel['laser'] - 1
-        idx_mw_channel = self.channel['w'] - 1
+        idx_mw_channel = self.channel['mw'] - 1
         idx_tagger_channel = self.channel['tagger'] - 1
 
         self.reset_asg_sequence()
-        self._asg_sequences[idx_laser_channel] = laser_seq
-        self._asg_sequences[idx_mw_channel] = mw_seq
-        self._asg_sequences[idx_tagger_channel] = tagger_seq
+        if laser_seq is not None:
+            self._asg_sequences[idx_laser_channel] = laser_seq
+        if mw_seq is not None:
+            self._asg_sequences[idx_mw_channel] = mw_seq
+        if tagger_seq is not None:
+            self._asg_sequences[idx_tagger_channel] = tagger_seq
 
         # connect & download pulse data
         self.asg_connect_and_download_data(self._asg_sequences)
@@ -306,9 +311,14 @@ class Scheduler(abc.ABC):
             raise TypeError('unsupported function in this scheduler type')
 
         if self.two_pulse_readout:
-            counts_pairs = [(sum(ls[1::2]), sum(ls[::2])) for ls in self._data]
+            counts_pairs = [(np.mean(ls[1::2]), np.mean(ls[::2])) for ls in self._data]
+
             counts = list(map(min, counts_pairs))
             counts_ref = list(map(max, counts_pairs))
+
+            # counts = [np.mean(ls[::2]) for ls in self._data]
+            # counts_ref = [np.mean(ls[1::2]) for ls in self._data]
+
             self._result = [xs, counts, counts_ref]
             self._result_detail = {
                 xs_name: xs,
@@ -481,6 +491,7 @@ class FrequencyDomainScheduler(Scheduler):
         """
         Scanning frequencies & getting data of Counter
         """
+        time.sleep(5)
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
@@ -535,7 +546,7 @@ class FrequencyDomainScheduler(Scheduler):
         print('Begin to run {}. Frequency: {:.3f} - {:.3f} GHz.'.format(self.name, self._freqs[0] / C.giga,
                                                                         self._freqs[-1] / C.giga))
         print('t: {:.2f} ns, N: {}, T: {:.2f} s, n_freqs: {}'.format(self._asg_conf['t'] / C.nano, self._asg_conf['N'],
-                                                                     self.mw_dwell, len(self._freqs)))
+                                                                     self.asg_dwell, len(self._freqs)))
         print('Estimated total running time: {:.2f} s'.format(self.time_total))
 
         self._start_device()

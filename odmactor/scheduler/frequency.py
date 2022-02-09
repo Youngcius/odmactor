@@ -31,6 +31,7 @@ import numpy as np
 import scipy.constants as C
 from typing import List
 from odmactor.scheduler.base import FrequencyDomainScheduler
+from odmactor import utils
 
 
 class CWScheduler(FrequencyDomainScheduler):
@@ -62,7 +63,9 @@ class CWScheduler(FrequencyDomainScheduler):
         :param N: n_values for TimeTagger.Counter
         """
         cont_seq = [t, 0]
-        self._download_asg_sequences(laser_seq=cont_seq, mw_seq=cont_seq, tagger_seq=cont_seq, N=N)
+        if self.mw_ttl == 0:
+            mw_seq = utils.flip_sequence(cont_seq)
+        self._download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, tagger_seq=cont_seq, N=N)
 
     def run_single_step(self, power, freq, mw_control='on') -> List[float]:
         """
@@ -279,14 +282,19 @@ class PulseScheduler(FrequencyDomainScheduler):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
 
-    def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000,
-                           inter_readout=200, inter_period=200, N: int = 1000):
+    def set_odmr_seq(self, laser_seq:list=None, mw_seq:list=None, tagger_seq:list=None):
+        if self.mw_ttl==0:
+            mw_seq=utils.flip_sequence(mw_seq)
+        self._download_asg_sequences()
+
+    def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000, pre_read=200,
+                           inter_mw_read=500, inter_readout=200, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
             asg laser channel:
-            -----               ---------
-            |   |               |       |
-            |   |---------------|       |----
+            -----               -------------
+            |   |               |           |
+            |   |---------------|           |
             asg microwave channel:
                     -------------
                     |           |
@@ -311,16 +319,23 @@ class PulseScheduler(FrequencyDomainScheduler):
         # total time for 'N' period, also for MW operation time at each frequency point
         if t_read_ref is not None:
             self.two_pulse_readout = True
-            laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig + inter_readout + t_read_ref, inter_period]
-            mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_readout + t_read_ref + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_readout, t_read_ref, inter_period]
+            laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read,
+                         pre_read + t_read_sig + inter_readout + t_read_ref + inter_period, 0]
+            mw_seq = [0, t_init + inter_init_mw, t_mw,
+                      inter_mw_read + pre_read + t_read_sig + inter_readout + t_read_ref + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read, t_read_sig, inter_readout,
+                          t_read_ref, inter_period]
             # apd_seq = [sum(tagger_seq[:-4]), sum(tagger_seq[-4:])]
         else:
             # single-pulse readout
-            laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig, inter_period]
-            mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_period]
+            laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read, pre_read + t_read_sig + inter_period, 0]
+            mw_seq = [0, t_init + inter_init_mw, t_mw, inter_mw_read + pre_read + t_read_sig + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read, t_read_sig, inter_period]
             # apd_seq = [sum(tagger_seq[:-2], sum(tagger_seq[-2:]))]
+
+        if self.mw_ttl == 0:
+            #     # low-level effective
+            mw_seq = utils.flip_sequence(mw_seq)
 
         self._download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 

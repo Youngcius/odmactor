@@ -28,3 +28,20 @@ def dBm_to_mW(dBm):
 
 def mW_to_dBm(mW):
     return 10 * np.log10(mW)
+
+
+def flip_sequence(seq: list) -> list:
+    """
+    Flip the control sequence
+    i.e., high-level effective <---> low level effective
+    """
+    if seq[0] == 0:
+        if seq[-1] == 0:
+            return seq[1:-1]
+        else:
+            return seq[1:] + [0]
+    else:
+        if seq[-1] == 0:
+            return [0] + seq[:-1]
+        else:
+            return [0] + seq + [0]
