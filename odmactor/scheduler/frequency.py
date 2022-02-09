@@ -65,7 +65,9 @@ class CWScheduler(FrequencyDomainScheduler):
         cont_seq = [t, 0]
         if self.mw_ttl == 0:
             mw_seq = utils.flip_sequence(cont_seq)
-        self._download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, tagger_seq=cont_seq, N=N)
+        else:
+            mw_seq = cont_seq
+        self.download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, tagger_seq=cont_seq, N=N)
 
     def run_single_step(self, power, freq, mw_control='on') -> List[float]:
         """
@@ -282,10 +284,10 @@ class PulseScheduler(FrequencyDomainScheduler):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
 
-    def set_odmr_seq(self, laser_seq:list=None, mw_seq:list=None, tagger_seq:list=None):
-        if self.mw_ttl==0:
-            mw_seq=utils.flip_sequence(mw_seq)
-        self._download_asg_sequences()
+    def set_odmr_seq(self, laser_seq: list = None, mw_seq: list = None, tagger_seq: list = None):
+        if self.mw_ttl == 0:
+            mw_seq = utils.flip_sequence(mw_seq)
+        self.download_asg_sequences()
 
     def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000, pre_read=200,
                            inter_mw_read=500, inter_readout=200, inter_period=200, N: int = 1000):
@@ -337,7 +339,7 @@ class PulseScheduler(FrequencyDomainScheduler):
             #     # low-level effective
             mw_seq = utils.flip_sequence(mw_seq)
 
-        self._download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
+        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def run_single_step(self, freq, power=None, mw_control='on') -> List[float]:
         """

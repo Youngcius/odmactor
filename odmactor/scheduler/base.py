@@ -76,7 +76,8 @@ class Scheduler(abc.ABC):
         else:
             raise ConnectionError('ASG not connected')
 
-    def _download_asg_sequences(self, laser_seq: List[int]=None, mw_seq: List[int]=None, tagger_seq: List[int]=None, N: int=100000):
+    def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
+                               tagger_seq: List[int] = None, N: int = 100000):
         """
         Download control sequences into the memory of ASG
         :param laser_seq: laser control sequence

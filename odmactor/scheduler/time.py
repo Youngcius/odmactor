@@ -54,7 +54,7 @@ class RamseyScheduler(TimeDomainScheduler):
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_free, t_mw, t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw * 2 + t_free, t_read_sig, inter_period]
 
-        self._download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
+        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_readout=200,
                            inter_period=200, N: int = 1000):
@@ -151,7 +151,7 @@ class RabiScheduler(TimeDomainScheduler):
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_period]
 
-        self._download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
+        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_readout=200,
                            inter_period=200, N: int = 1000):
@@ -247,7 +247,7 @@ class RelaxationScheduler(TimeDomainScheduler):
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
 
-        self._download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
+        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=10000, inter_readout=200,
                            inter_period=200, N: int = 10000):
