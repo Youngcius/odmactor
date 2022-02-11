@@ -56,7 +56,6 @@ class RamseyScheduler(TimeDomainScheduler):
             tagger_seq = [0, t_init + inter_init_mw + t_mw * 2 + t_free, t_read_sig, inter_period]
 
         if self.mw_ttl == 0:
-            # low-level effective
             mw_seq = utils.flip_sequence(mw_seq)
 
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
@@ -66,17 +65,17 @@ class RamseyScheduler(TimeDomainScheduler):
         """
         Wave form for single period:
             laser (no asg control sequence):
-            -----                   ---------
-            |   |                   |       |
-            |   |-------------------|       |
+            -----                       ---------
+            |   |                       |       |
+            |   |-----------------------|       |
             asg microwave channel:
-                ---               ---
-                | |  (<------->)  | |
-            ----| |---------------| |--------
+                  ---               ---
+                  | |  (<------->)  | |
+            ------| |---------------| |----------
             asg tagger acquisition channel:
-                                    ---   ---
-                                    | |   | |
-            ------------------------| |---| |
+                                        ---   ---
+                                        | |   | |
+            ----------------------------| |---| |
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
@@ -138,7 +137,7 @@ class RabiScheduler(TimeDomainScheduler):
     def _gene_detect_seq(self, t_mw):
         """
         Generate Rabi detection sequences and download it to ASG
-        :param t_free: free precession time (time duration between two MW pulse)
+        :param t_mw: free precession time (time duration between two MW pulse)
         """
         t_init, inter_init_mw = self._cache['t_init'], self._cache['inter_init_mw']
         t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
@@ -162,7 +161,6 @@ class RabiScheduler(TimeDomainScheduler):
             tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read, t_read_sig, inter_period]
 
         if self.mw_ttl == 0:
-            #     # low-level effective
             mw_seq = utils.flip_sequence(mw_seq)
 
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
@@ -172,22 +170,23 @@ class RabiScheduler(TimeDomainScheduler):
         """
         Wave form for single period:
             laser (no asg control sequence):
-            -----                   ---------
-            |   |                   |       |
-            |   |-------------------|       |
+            -----                        ---------
+            |   |                        |       |
+            |   |------------------------|       |
             asg microwave channel (variable duration):
-                ---------------------
-                |  (<----------->)  |
-            ----|                   |--------
+                  ---------------------
+                  |  (<----------->)  |
+            ------|                   |----------
             asg tagger acquisition channel:
-                                    ---   ---
-                                    | |   | |
-            ------------------------| |---| |
+                                         ---   ---
+                                         | |   | |
+            -----------------------------| |---| |
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
         :param t_read_ref: time span for reference signal readout
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
+        :param inter_mw_read: time interval between MW operation and readout laser pulses
         :param inter_readout: time span for interval
         :param inter_period: interval between two neighbor periods, e.g. 200
         :param N: number of ASG operation periods for each detection point
@@ -264,7 +263,6 @@ class RelaxationScheduler(TimeDomainScheduler):
             tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
 
         if self.mw_ttl == 0:
-            #     # low-level effective
             mw_seq = utils.flip_sequence(mw_seq)
 
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
@@ -274,17 +272,17 @@ class RelaxationScheduler(TimeDomainScheduler):
         """
         Wave form for single period:
             laser (no asg control sequence):
-            -----                   ---------
-            |   |                   |       |
-            |   |-------------------|       |
+            -----                      ---------
+            |   |                      |       |
+            |   |----------------------|       |
             asg microwave channel (variable duration):
-                -----
-                |   | (<--------->)
-            ----|   |------------------------
+                  -----
+                  |   | (<--------->)
+            ------|   |------------------------
             asg tagger acquisition channel:
-                                    ---   ---
-                                    | |   | |
-            ------------------------| |---| |
+                                       ---   ---
+                                       | |   | |
+            ---------------------------| |---| |
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout

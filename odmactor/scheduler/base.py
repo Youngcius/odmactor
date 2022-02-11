@@ -486,7 +486,10 @@ class FrequencyDomainScheduler(Scheduler):
         # unit: Hz
         n_freqs = int((end - start) / step + 1)
         self._freqs = np.linspace(start, end, n_freqs).tolist()
-        self.time_total = self.asg_dwell * n_freqs  # estimated total time
+        if self.asg_dwell == 0:
+            raise ValueError('"asg_dwell" is 0.0 currently. Please set ODMR sequences parameters firstly.')
+        else:
+            self.time_total = self.asg_dwell * n_freqs  # estimated total time
 
     def _scan_freqs_and_get_data(self):
         """
@@ -586,19 +589,32 @@ class TimeDomainScheduler(Scheduler):
         """
         n_times = int((end - start) / step + 1)
         self._times = np.linspace(start, end, n_times).tolist()
-        self.time_total = sum(self._times)  # estimated total time
+        N = self._asg_conf['N']
+        if N is None:
+            raise ValueError('"N" is None currently. Please set ODMR sequences parameters firstly.')
+        else:
+            self.time_total = sum(self._times) * C.nano * N  # estimated total time
+
+    def _get_data_with_save(self, fname):
+        np.savetxt(fname, self.counter.getData().ravel())
+        self.counter.clear()
 
     def _scan_times_and_get_data(self):
         """
         Scanning time intervals & getting data of Counter
         """
+        fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
+        fnames = [os.path.join('output', f) for f in fnames]
+        self.means = []
         for i, duration in enumerate(self._times):
             self._gene_detect_seq(duration)
             self._asg.start()
             print('scanning freq {:.3f} ns'.format(duration))
-            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            # t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.asg_dwell)  # accumulate counts
-            t.start()  # begin readout
+            self._data.append(self.counter.getData().ravel().tolist())
+            self.means.append(np.mean(self._data[-1]))
+            # t.start()  # begin readout
         print('finished data acquisition')
 
     def _acquire_data(self, *args, **kwargs):

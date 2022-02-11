@@ -1,28 +1,11 @@
 """
-ODMR detecting classes
+Frequency-domain ODMR detecting classes
 ---
 1. Continuous-wave detection (frequency-domain method)
-Basic: 激光和微波同时施加，单光子探测器持续探测全过 程中的光子数，通过扫描微波频 率产生频谱。
-Remarks: 连续波谱不是典型 的量子传感过程，实验中系统处 于开放稳态，相干性在此实验中几乎不起作用
+Basic: 激光和微波同时施加，单光子探测器持续探测全过程中的光子数，通过扫描微波频率产生频谱
+Remarks: 连续波谱不是典型的量子传感过程，实验中系统处于开放稳态，相干性在此实验中几乎不起作用
 ---
 2. Pulse detection (frequency-domain method)
-输入：
-	- 微波频率范围和步长（起止点/中心和宽度）--> freqs = linspace(,,)
-	- ASG 序列周期个数，serial time intervals parameters. e.g. 10ms * 100 = 1s ，后者作为微波在单个频率点的持续时间 T = N * t
-	- 单个周期内激光初始化时间 t_init, 微波翻转时间 t_mw，读出时间 t_read
-	-
-输出：对比度数据，
-调度过程  结果读出 ：
-	- 生成两通道数据（channel['laser']，channel['mw'] --> asg_data: Matrix）
-	- For each freq in freqs: Asg start --> Asg stop 历时 T ，存储 APD 数据 到 self._cache
-	- 最后统一计算各频率点的对比度，结果到 self.result : {'freqs': …, 'ratio': …}，self.result_detail
-经验参数：
-    - init: 5us
-    - init-mw-interval 3us
-    - mw: 5us
-    - readout sign: 400ns
-    - readout-interval: 200ns
-    - readout ref: 400s
 """
 
 import threading
@@ -165,6 +148,7 @@ class CWScheduler(FrequencyDomainScheduler):
         Run the scheduler under scanning-frequency mode
         1) start device
         2) acquire data timely
+        :param mw_control: control the MW (ASG sequence) staying whether "on" or "off"
         :param with_ref: if True, detect both signals and reference signals in two sequent asg_dwell periods
         """
         mw_seq_on = self.mw_control_seq()
@@ -284,27 +268,22 @@ class PulseScheduler(FrequencyDomainScheduler):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
 
-    def set_odmr_seq(self, laser_seq: list = None, mw_seq: list = None, tagger_seq: list = None):
-        if self.mw_ttl == 0:
-            mw_seq = utils.flip_sequence(mw_seq)
-        self.download_asg_sequences()
-
     def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000, pre_read=200,
                            inter_mw_read=500, inter_readout=200, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
             asg laser channel:
-            -----               -------------
-            |   |               |           |
-            |   |---------------|           |
+            -----                 -------------
+            |   |                 |           |
+            |   |-----------------|           |
             asg microwave channel:
                     -------------
                     |           |
-            --------|           |------------
+            --------|           |--------------
             asg tagger acquisition channel:
-                                ---   ---
-                                | |   | |
-            --------------------| |---| |----
+                                   ---   ---
+                                   | |   | |
+            -----------------------| |---| |----
         All units for the parameters is 'ns'
         :param t_init: time span for laser initialization, e.g. 5000
         :param t_mw: time span for microwave actual operation in a ASG period, e.g. 800
@@ -312,6 +291,8 @@ class PulseScheduler(FrequencyDomainScheduler):
         :param t_read_ref: time span for reference signal readout, e.g. 400
                             if the parameter is not assigned, means single-pulse readout
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 3000
+        :param pre_read: previous time interval before Tagger readout and after laser readout pulses
+        :param inter_mw_read: time interval between MW operation and laser readout pulses
         :param inter_readout: interval between single readout pulse and reference signal readout, e.g. 200
                             when t_read_ref is assigned, this parameter will play its role
         :param inter_period: interval between two neighbor periods, e.g. 200
