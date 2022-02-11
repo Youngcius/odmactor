@@ -17,6 +17,7 @@ from odmactor.scheduler.base import TimeDomainScheduler
 import time
 import scipy.constants as C
 from typing import List
+from odmactor import utils
 
 
 class RamseyScheduler(TimeDomainScheduler):
@@ -53,6 +54,10 @@ class RamseyScheduler(TimeDomainScheduler):
             laser_seq = [t_init, inter_init_mw + t_mw * 2 + t_free, t_read_sig, inter_period]
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_free, t_mw, t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw * 2 + t_free, t_read_sig, inter_period]
+
+        if self.mw_ttl == 0:
+            # low-level effective
+            mw_seq = utils.flip_sequence(mw_seq)
 
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
@@ -92,6 +97,7 @@ class RamseyScheduler(TimeDomainScheduler):
             'inter_period': inter_period,
             'N': N,
         }
+        self._asg_conf['N'] = N
         if t_read_ref is not None:
             self.two_pulse_readout = True
 
@@ -137,24 +143,32 @@ class RabiScheduler(TimeDomainScheduler):
         t_init, inter_init_mw = self._cache['t_init'], self._cache['inter_init_mw']
         t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
         inter_readout, inter_period = self._cache['inter_readout'], self._cache['inter_period']
+        inter_mw_read = self._cache['inter_mw_read']
         N = self._cache['N']
 
         # generate ASG wave forms
         if t_read_ref is not None:
             self.two_pulse_readout = True
-            laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig + inter_readout + t_read_ref, inter_period]
-            mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_readout + t_read_ref + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_readout, t_read_ref, inter_period]
+            laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read, t_read_sig + inter_readout + t_read_ref,
+                         inter_period]
+            mw_seq = [0, t_init + inter_init_mw, t_mw,
+                      inter_mw_read + t_read_sig + inter_readout + t_read_ref + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read, t_read_sig, inter_readout, t_read_ref,
+                          inter_period]
         else:
             # single-pulse readout (without reference readout)
-            laser_seq = [t_init, inter_init_mw + t_mw, t_read_sig, inter_period]
-            mw_seq = [0, t_init + inter_init_mw, t_mw, t_read_sig + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw, t_read_sig, inter_period]
+            laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read, t_read_sig, inter_period]
+            mw_seq = [0, t_init + inter_init_mw, t_mw, inter_mw_read + t_read_sig + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read, t_read_sig, inter_period]
+
+        if self.mw_ttl == 0:
+            #     # low-level effective
+            mw_seq = utils.flip_sequence(mw_seq)
 
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
-    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_readout=200,
-                           inter_period=200, N: int = 1000):
+    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_mw_read=100,
+                           inter_readout=200, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
             laser (no asg control sequence):
@@ -183,10 +197,12 @@ class RabiScheduler(TimeDomainScheduler):
             't_read_sig': t_read_sig,
             't_read_ref': t_read_ref,
             'inter_init_mw': inter_init_mw,
+            'inter_mw_read': inter_mw_read,
             'inter_readout': inter_readout,
             'inter_period': inter_period,
             'N': N,
         }
+        self._asg_conf['N'] = N
         if t_read_ref is not None:
             self.two_pulse_readout = True
 
@@ -247,6 +263,10 @@ class RelaxationScheduler(TimeDomainScheduler):
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
 
+        if self.mw_ttl == 0:
+            #     # low-level effective
+            mw_seq = utils.flip_sequence(mw_seq)
+
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=10000, inter_readout=200,
@@ -285,6 +305,7 @@ class RelaxationScheduler(TimeDomainScheduler):
             'inter_period': inter_period,
             'N': N,
         }
+        self._asg_conf['N'] = N
         if t_read_ref is not None:
             self.two_pulse_readout = True
 

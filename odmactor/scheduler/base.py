@@ -121,11 +121,11 @@ class Scheduler(abc.ABC):
         print('Current Tagger input channels:', self.tagger_input)
 
         # construct & execute Measurement instance
-        t_ps = int(self._asg_conf['t'] / C.pico)
         N = self._asg_conf['N']
 
         if reader == 'counter':
             # continuous counting
+            t_ps = int(self._asg_conf['t'] / C.pico)
             self.counter = tt.Counter(self.tagger, channels=[self.tagger_input['apd']], binwidth=t_ps, n_values=N)
         elif reader == 'cbm':
             # pulse readout
@@ -593,6 +593,8 @@ class TimeDomainScheduler(Scheduler):
         Scanning time intervals & getting data of Counter
         """
         for i, duration in enumerate(self._times):
+            self._gene_detect_seq(duration)
+            self._asg.start()
             print('scanning freq {:.3f} ns'.format(duration))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.asg_dwell)  # accumulate counts
@@ -618,7 +620,7 @@ class TimeDomainScheduler(Scheduler):
         1) start device
         2) acquire data timely
         """
-        print('Begin to run {}. Time intervals: {:.3f} - {:.3f} ns.'.format(self.name, self._times[0], self._freqs[-1]))
+        print('Begin to run {}. Time intervals: {:.3f} - {:.3f} ns.'.format(self.name, self._times[0], self._times[-1]))
         print('N: {}, n_times: {}'.format(self._asg_conf['N'], len(self._times)))
         print('Estimated total running time: {:.2f} s'.format(self.time_total))
 
