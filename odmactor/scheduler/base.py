@@ -495,7 +495,10 @@ class FrequencyDomainScheduler(Scheduler):
         """
         Scanning frequencies & getting data of Counter
         """
-        time.sleep(5)
+        # fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
+        # fnames = [os.path.join('output', f) for f in fnames]
+        # self.means = []
+
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
@@ -504,6 +507,11 @@ class FrequencyDomainScheduler(Scheduler):
             time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
             time.sleep(self.time_pad)
+
+            # time.sleep(self.asg_dwell)  # accumulate counts
+            # self._data.append(self.counter.getData().ravel().tolist())
+            # self.means.append(np.mean(self._data[-1]))
+
         print('finished data acquisition')
 
     def _acquire_data(self, *args, **kwargs):
@@ -603,18 +611,18 @@ class TimeDomainScheduler(Scheduler):
         """
         Scanning time intervals & getting data of Counter
         """
-        fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
-        fnames = [os.path.join('output', f) for f in fnames]
-        self.means = []
+        # fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
+        # fnames = [os.path.join('output', f) for f in fnames]
+        # self.means = []
         for i, duration in enumerate(self._times):
             self._gene_detect_seq(duration)
             self._asg.start()
             print('scanning freq {:.3f} ns'.format(duration))
-            # t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
-            time.sleep(self.asg_dwell)  # accumulate counts
-            self._data.append(self.counter.getData().ravel().tolist())
-            self.means.append(np.mean(self._data[-1]))
-            # t.start()  # begin readout
+            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            t.start()  # begin readout
+            # time.sleep(self.asg_dwell)  # accumulate counts
+            # self._data.append(self.counter.getData().ravel().tolist())
+            # self.means.append(np.mean(self._data[-1]))
         print('finished data acquisition')
 
     def _acquire_data(self, *args, **kwargs):
