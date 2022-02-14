@@ -619,8 +619,9 @@ class TimeDomainScheduler(Scheduler):
             self._asg.start()
             print('scanning freq {:.3f} ns'.format(duration))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
-            # time.sleep(self.asg_dwell)  # accumulate counts
+
             # self._data.append(self.counter.getData().ravel().tolist())
             # self.means.append(np.mean(self._data[-1]))
         print('finished data acquisition')
