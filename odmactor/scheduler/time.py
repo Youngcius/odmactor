@@ -238,6 +238,10 @@ class RelaxationScheduler(TimeDomainScheduler):
     def __init__(self, *args, **kwargs):
         super(RelaxationScheduler, self).__init__(*args, **kwargs)
         self.name = 'T1 Relaxation Scheduler'
+        if 'ms' in kwargs.keys():
+            self.ms = 0
+        else:
+            self.ms = 1
 
     def _gene_detect_seq(self, t_free):
         """
@@ -249,18 +253,30 @@ class RelaxationScheduler(TimeDomainScheduler):
         inter_readout, inter_period = self._cache['inter_readout'], self._cache['inter_period']
         N = self._cache['N']
 
-        # generate ASG wave forms
-        if self.two_pulse_readout:
-            # meaning t_read_ref is not None:
-            laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig + inter_readout + t_read_ref, inter_period]
-            mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + t_read_sig + inter_readout + t_read_ref + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_readout, t_read_ref,
-                          inter_period]
+        if self.ms == 1:
+            # generate ASG wave forms
+            if self.two_pulse_readout:
+                # meaning t_read_ref is not None:
+                laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig + inter_readout + t_read_ref,
+                             inter_period]
+                mw_seq = [0, t_init + inter_init_mw, t_mw,
+                          t_free + t_read_sig + inter_readout + t_read_ref + inter_period]
+                tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_readout, t_read_ref,
+                              inter_period]
+            else:
+                # single-pulse readout (without reference readout)
+                laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
+                mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + t_read_sig + inter_period]
+                tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
         else:
-            # single-pulse readout (without reference readout)
-            laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
-            mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + t_read_sig + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
+            print('ms == 0')
+            if self.two_pulse_readout:
+                pass
+            else:
+                print('no two-pulse read')
+                laser_seq = [t_init, t_free, t_read_sig, inter_period]
+                mw_seq = [0, sum(laser_seq)]
+                tagger_seq = [0, t_init + t_free, t_read_sig, inter_period]
 
         if self.mw_ttl == 0:
             mw_seq = utils.flip_sequence(mw_seq)

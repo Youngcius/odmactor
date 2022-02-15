@@ -312,6 +312,7 @@ class Scheduler(abc.ABC):
             raise TypeError('unsupported function in this scheduler type')
 
         if self.two_pulse_readout:
+            print('========================================================')
             counts_pairs = [(np.mean(ls[1::2]), np.mean(ls[::2])) for ls in self._data]
 
             counts = list(map(min, counts_pairs))
@@ -328,6 +329,7 @@ class Scheduler(abc.ABC):
                 'origin_data': self._data,
             }
         else:
+            print('------------------------------------------------------------------')
             counts = [np.mean(ls) for ls in self._data]
 
             self._result = [xs, counts]
@@ -484,8 +486,10 @@ class FrequencyDomainScheduler(Scheduler):
         :param step: frequency step
         """
         # unit: Hz
-        n_freqs = int((end - start) / step + 1)
-        self._freqs = np.linspace(start, end, n_freqs).tolist()
+        # n_freqs = int((end - start) / step + 1)
+        # self._freqs = np.linspace(start, end, n_freqs).tolist()
+        self._freqs = np.arange(start, end + step / 2, step).tolist()
+        n_freqs = len(self._freqs)
         if self.asg_dwell == 0:
             raise ValueError('"asg_dwell" is 0.0 currently. Please set ODMR sequences parameters firstly.')
         else:
@@ -587,7 +591,7 @@ class TimeDomainScheduler(Scheduler):
         super(TimeDomainScheduler, self).__init__(*args, **kwargs)
         self.name = 'Time-domain ODMR Scheduler'
 
-    def set_delay_times(self, start, end, step):
+    def set_delay_times(self, start=None, end=None, step=None, times=None):
         """
         Set time intervals for scanning detection (e.g. Ramsey, Rabi, DD, Relaxation)
         All unit is "ns"
@@ -595,8 +599,12 @@ class TimeDomainScheduler(Scheduler):
         :param end: end time interval
         :param step: time interval step
         """
-        n_times = int((end - start) / step + 1)
-        self._times = np.linspace(start, end, n_times).tolist()
+        # n_times = int((end - start) / step + 1)
+        # self._times = np.linspace(start, end, n_times).tolist()
+        if times is not None:
+            self._times = times
+        else:
+            self._times = np.arange(start, end + step / 2, step).tolist()
         N = self._asg_conf['N']
         if N is None:
             raise ValueError('"N" is None currently. Please set ODMR sequences parameters firstly.')
@@ -634,6 +642,7 @@ class TimeDomainScheduler(Scheduler):
         self._scan_times_and_get_data()
 
         # 2. calculate result (count with/without reference)
+        print('two pulses:', self.two_pulse_readout)
         self._cal_counts_result()
 
         # 3. save result
