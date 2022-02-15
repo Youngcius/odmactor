@@ -85,8 +85,14 @@ class Scheduler(abc.ABC):
         :param tagger_seq: tagger readout control sequence
         :param N: repetition number of sequences periods for each detection point
         """
-        # assert sum(laser_seq) == sum(mw_seq) == sum(tagger_seq), "Length of pulse sequences are not equal in a period!"
-        t = sum(laser_seq)
+        sequences = [laser_seq, mw_seq, tagger_seq]
+        if not any(sequences):
+            raise ValueError('laser_seq, mw_seq and tagger_seq cannot be all None')
+        sequences = [seq for seq in sequences if seq is not None]  # non-None sequences
+        lengths = np.unique(list(map(len, sequences)))
+        if len(lengths) != 1:
+            raise ValueError('input sequences should have the same length')
+        t = lengths.item()
 
         # configure ASG period information
         self._conf_time_paras(t, N)
@@ -312,9 +318,7 @@ class Scheduler(abc.ABC):
             raise TypeError('unsupported function in this scheduler type')
 
         if self.two_pulse_readout:
-            print('========================================================')
             counts_pairs = [(np.mean(ls[1::2]), np.mean(ls[::2])) for ls in self._data]
-
             counts = list(map(min, counts_pairs))
             counts_ref = list(map(max, counts_pairs))
 
@@ -329,9 +333,7 @@ class Scheduler(abc.ABC):
                 'origin_data': self._data,
             }
         else:
-            print('------------------------------------------------------------------')
             counts = [np.mean(ls) for ls in self._data]
-
             self._result = [xs, counts]
             self._result_detail = {
                 xs_name: xs,
@@ -598,11 +600,10 @@ class TimeDomainScheduler(Scheduler):
         :param start: start time interval
         :param end: end time interval
         :param step: time interval step
+        :param times: time duration list
         """
-        # n_times = int((end - start) / step + 1)
-        # self._times = np.linspace(start, end, n_times).tolist()
         if times is not None:
-            self._times = times
+            self._times = list(times)
         else:
             self._times = np.arange(start, end + step / 2, step).tolist()
         N = self._asg_conf['N']

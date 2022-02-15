@@ -269,7 +269,8 @@ class PulseScheduler(FrequencyDomainScheduler):
         self.name = 'Pulse ODMR Scheduler'
 
     def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000, pre_read=200,
-                           inter_mw_read=500, inter_readout=200, inter_period=200, N: int = 1000):
+                           inter_mw_read=500, inter_readout=200, inter_period=200, N: int = 1000,
+                           with_ref: bool = False):
         """
         Wave form for single period:
             asg laser channel:
@@ -297,7 +298,9 @@ class PulseScheduler(FrequencyDomainScheduler):
                             when t_read_ref is assigned, this parameter will play its role
         :param inter_period: interval between two neighbor periods, e.g. 200
         :param N: number of ASG operation periods
+        :param with_ref: if True, will
         """
+        #TODO: delete this?
         # unit: ns
         # total time for 'N' period, also for MW operation time at each frequency point
         if t_read_ref is not None:

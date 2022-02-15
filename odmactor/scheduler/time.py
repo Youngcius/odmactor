@@ -41,8 +41,7 @@ class RamseyScheduler(TimeDomainScheduler):
         N = self._cache['N']
 
         # generate ASG wave forms
-        if t_read_ref is not None:
-            self.two_pulse_readout = True
+        if self.two_pulse_readout:
             laser_seq = [t_init, inter_init_mw + t_mw * 2 + t_free, t_read_sig + inter_readout + t_read_ref,
                          inter_period]
             mw_seq = [0, t_init + inter_init_mw, t_mw, t_free, t_mw,
@@ -146,8 +145,7 @@ class RabiScheduler(TimeDomainScheduler):
         N = self._cache['N']
 
         # generate ASG wave forms
-        if t_read_ref is not None:
-            self.two_pulse_readout = True
+        if self.two_pulse_readout:
             laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read, t_read_sig + inter_readout + t_read_ref,
                          inter_period]
             mw_seq = [0, t_init + inter_init_mw, t_mw,
@@ -254,7 +252,6 @@ class RelaxationScheduler(TimeDomainScheduler):
         N = self._cache['N']
 
         if self.ms == 1:
-            # generate ASG wave forms
             if self.two_pulse_readout:
                 # meaning t_read_ref is not None:
                 laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig + inter_readout + t_read_ref,
@@ -293,8 +290,11 @@ class RelaxationScheduler(TimeDomainScheduler):
             |   |----------------------|       |
             asg microwave channel (variable duration):
                   -----
-                  |   | (<--------->)
+                  |   | (<--------->)    ms = 1
             ------|   |------------------------
+            or
+                 (<----------------->)  ms = 0
+            -----------------------------------
             asg tagger acquisition channel:
                                        ---   ---
                                        | |   | |
