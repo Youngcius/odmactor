@@ -268,9 +268,10 @@ class RelaxationScheduler(TimeDomainScheduler):
         else:
             print('ms == 0')
             if self.two_pulse_readout:
-                pass
+                laser_seq = [t_init, t_free, t_read_sig + inter_readout + t_read_ref, inter_period]
+                mw_seq = [0, sum(laser_seq)]
+                tagger_seq = [0, t_init + t_free, t_read_sig, inter_readout, t_read_ref, inter_period]
             else:
-                print('no two-pulse read')
                 laser_seq = [t_init, t_free, t_read_sig, inter_period]
                 mw_seq = [0, sum(laser_seq)]
                 tagger_seq = [0, t_init + t_free, t_read_sig, inter_period]

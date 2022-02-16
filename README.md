@@ -4,7 +4,7 @@ ODMR software SDK integrating functions of ODMR detection and spin manipulation.
 
 *This project is on continuous updating & using ...*
 
-> Last updation date: February, 2022<br>
+> Last updating date: February, 2022<br>
 > Current implementation: ODMR detection
 
 ## Design Method
@@ -50,9 +50,9 @@ all controlled in precision of "ns".
 
 ![odmr-sequence](./asset/figure/odmr-sequence.png)
 
-Thus the series of ODMR measurement experimetns is simplified by a "pipeline". CW and Pulse ODMR could be used to
+Thus the series of ODMR measurement experiments is simplified by a "pipeline". CW and Pulse ODMR could be used to
 characterize environmental physical quantities, while they also could be used to calibrate energy gap or fine
-structures. Ramsey detection is usually used to characterize T2* (dephasing time) of spin systems. Some typical results
+structures. Ramsey detecting is usually used to characterize T2* (dephasing time) of spin systems. Some typical results
 of them are like the following figure.
 
 ![](./asset/figure/odmr-magnet.png)
@@ -109,9 +109,9 @@ The most important instrument to synchronize control measurement processes.
 
 **Microwave instrument (MW)**
 
-- Vendor:
-- Type:
-- Frequency range:
+-
+Vendor: [SMB 100A](https://www.rohde-schwarz.com/us/products/test-and-measurement/analog-signal-generators/rs-smb100a-microwave-signal-generator_63493-9379.html)
+- Type: R&S
 
 **Time Tagger (Tagger)**
 
@@ -154,18 +154,19 @@ tagger_input = {'apd': 1, 'asg': 2}
 scheduler = PulseScheduler()  # Pulse-ODMR scheduler instance
 scheduler.channel = channel_dict  # set ASG control channels
 scheduler.tagger_input = tagger_input  # set tagger input channels
-scheduler.configure_mw_paras(power=10) # configure MW power
+scheduler.configure_mw_paras(power=10)  # configure MW power
 scheduler.configure_odmr_seq(t_init, t_mw, t_read_sig=400, t_read_ref=400, inter_init_mw=inter_init_mw, N=N)
-scheduler.set_mw_freqs(freq_start, freq_end, freq_step) # set measured frequencies
+scheduler.set_mw_freqs(freq_start, freq_end, freq_step)  # set measured frequencies
 scheduler.configure_tagger_counting(reader='cbm')  # 'Counter Between Markers' measurement mode
 
 # run
 scheduler.run_scanning()
-scheduler.save_result(fname) # actually, this method is automatically called in the run_scanning() method
+scheduler.save_result(fname)  # actually, this method is automatically called in the run_scanning() method
 
 # result analysis
-counts_sig_ref = scheduler.result # [freqs, counts, counts_reference]
-contrast = [sig / ref for sig, ref in zip(counts_sig_ref[0], counts_sig_ref[1])] # calculate contrast (relative fluoresence intensity)
+counts_sig_ref = scheduler.result  # [freqs, counts, counts_reference]
+contrast = [sig / ref for sig, ref in
+            zip(counts_sig_ref[0], counts_sig_ref[1])]  # calculate contrast (relative fluorescence intensity)
 ```
 
 ## Addition
@@ -179,10 +180,13 @@ our [QIM](https://quantum.lab.arizona.edu/) group. For more information please c
 
 **Q: Where should I get to know more about Odmactor?**
 
-**A:** If you have more demand or cooperation willingnes, please contact to
+**A:** If you have more demand or cooperation willingness, please contact to
 the [Quantum Information and Materials Group](https://quantum.lab.arizona.edu) of U Arizona.
 
+**Q: Can I modify this set of programs for my own research?**
 
+**A:** Of course. The Odmactor is a set of open-source programs for promising research and education. We are glad that
+more people can use or modify it. If you have more ideas or suggestions, welcome to contact to us!
 
 ### Copyright and License
 

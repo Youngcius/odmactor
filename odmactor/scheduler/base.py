@@ -64,6 +64,10 @@ class Scheduler(abc.ABC):
             self.mw_ttl = kwargs['mw_ttl']  # 1: high-level effective; 0: low level effective
         else:
             self.mw_ttl = 1  # default: high-level effective
+        if 'with_ref' in kwargs.keys():
+            self.with_ref = kwargs['with_ref']
+        else:
+            self.with_ref = False
 
     def asg_connect_and_download_data(self, asg_data: List[List[float]]):
         """
@@ -317,29 +321,37 @@ class Scheduler(abc.ABC):
         else:
             raise TypeError('unsupported function in this scheduler type')
 
-        if self.two_pulse_readout:
-            counts_pairs = [(np.mean(ls[1::2]), np.mean(ls[::2])) for ls in self._data]
-            counts = list(map(min, counts_pairs))
-            counts_ref = list(map(max, counts_pairs))
-
-            # counts = [np.mean(ls[::2]) for ls in self._data]
-            # counts_ref = [np.mean(ls[1::2]) for ls in self._data]
-
+        if self.with_ref:
+            counts = [np.mean(ls) for ls in self._data]
+            counts_ref = [np.mean(ls) for ls in self._data_ref]
             self._result = [xs, counts, counts_ref]
             self._result_detail = {
                 xs_name: xs,
                 'counts': counts,
                 'counts_ref': counts_ref,
                 'origin_data': self._data,
+                'origin_data_ref': self._data_ref
             }
         else:
-            counts = [np.mean(ls) for ls in self._data]
-            self._result = [xs, counts]
-            self._result_detail = {
-                xs_name: xs,
-                'counts': counts,
-                'origin_data': self._data
-            }
+            if self.two_pulse_readout:
+                counts_pairs = [(np.mean(ls[1::2]), np.mean(ls[::2])) for ls in self._data]
+                counts = list(map(min, counts_pairs))
+                counts_ref = list(map(max, counts_pairs))
+                self._result = [xs, counts, counts_ref]
+                self._result_detail = {
+                    xs_name: xs,
+                    'counts': counts,
+                    'counts_ref': counts_ref,
+                    'origin_data': self._data,
+                }
+            else:
+                counts = [np.mean(ls) for ls in self._data]
+                self._result = [xs, counts]
+                self._result_detail = {
+                    xs_name: xs,
+                    'counts': counts,
+                    'origin_data': self._data
+                }
 
     def _gene_data_result_fname(self) -> str:
         """
@@ -495,7 +507,7 @@ class FrequencyDomainScheduler(Scheduler):
         if self.asg_dwell == 0:
             raise ValueError('"asg_dwell" is 0.0 currently. Please set ODMR sequences parameters firstly.')
         else:
-            self.time_total = self.asg_dwell * n_freqs  # estimated total time
+            self.time_total = self.asg_dwell * n_freqs * 2 if self.with_ref else self.asg_dwell * n_freqs  # estimated total time
 
     def _scan_freqs_and_get_data(self):
         """
@@ -504,6 +516,8 @@ class FrequencyDomainScheduler(Scheduler):
         # fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
         # fnames = [os.path.join('output', f) for f in fnames]
         # self.means = []
+
+        mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
 
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
@@ -514,6 +528,24 @@ class FrequencyDomainScheduler(Scheduler):
             t.start()  # begin readout
             time.sleep(self.time_pad)
 
+            if self.with_ref:
+                # modify the sequences
+                if self.mw_ttl == 0:
+                    mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
+                else:
+                    mw_off_seq = [0, self._asg_conf['t'] / C.nano]
+                self.mw_control_seq(mw_off_seq)
+
+                # reference data acquisition
+                tr = threading.Thread(target=self._get_data_ref(), name='thread-ref-{}'.format(i))
+                time.sleep(self.time_pad)
+                time.sleep(self.asg_dwell)
+                tr.start()
+                time.sleep(self.time_pad)
+
+                # recover the sequences
+                self.mw_control_seq(mw_on_seq)
+
             # time.sleep(self.asg_dwell)  # accumulate counts
             # self._data.append(self.counter.getData().ravel().tolist())
             # self.means.append(np.mean(self._data[-1]))
@@ -523,6 +555,7 @@ class FrequencyDomainScheduler(Scheduler):
     def _acquire_data(self, *args, **kwargs):
         """
         Scanning time intervals to acquire data for Time-domain Scheduler
+        :param with_ref: if True, MW 'on' and 'off' in turn
         """
         # 1. scan time intervals
         self._scan_freqs_and_get_data()
@@ -555,7 +588,12 @@ class FrequencyDomainScheduler(Scheduler):
         """
         mw_seq_on = self.mw_control_seq()
         if mw_control == 'off':
-            self.mw_control_seq([0, 0])
+            if self.mw_ttl==0:
+                mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
+            else:
+                mw_off_seq = [0, self._asg_conf['t'] / C.nano]
+            #TODO:check 设置为【0,0】时候微波有没有打开
+            self.mw_control_seq(mw_off_seq)
         elif mw_control == 'on':
             pass
         else:

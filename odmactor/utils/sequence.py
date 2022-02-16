@@ -3,7 +3,7 @@ Utils functions processing ASG sequences
 """
 import math
 from functools import reduce
-from typing import List
+from typing import List, Union
 from operator import concat
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -41,7 +41,7 @@ class SequenceString:
         return '\n'.join(self.strings)
 
 
-def seq_to_fig(seq: List[List[float]]) -> Figure:
+def seq_to_fig(seq: List[List[Union[float, int]]]) -> Figure:
     """
     Convert sequences (list of list) into a Figure instance
     """
