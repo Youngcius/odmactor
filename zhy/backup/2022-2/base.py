@@ -57,7 +57,6 @@ class Scheduler(abc.ABC):
         self.asg_dwell = 0.0
         self.time_pad = 0.0
         self.time_total = 0.0  # total time for scanning frequencies (estimated)
-        self.mw_power = 0.0  # 0 dBm in default
         self.output_dir = '../output/'
         if not os.path.exists(self.output_dir):
             os.mkdir(self.output_dir)
@@ -213,7 +212,6 @@ class Scheduler(abc.ABC):
         :param regulate_pi: whether regulate built-int MW pi pulse of this Scheduler
         """
         if power is not None:
-            self.mw_power = power
             self._mw_instr.write_float('POW', power)
             if regulate_pi:  # regulate time duration based on MW power
                 self._regulate_pi_pulse(power=power)  # by power
@@ -246,7 +244,7 @@ class Scheduler(abc.ABC):
         """
         Reset all channels of ASG as ZERO signals
         """
-        self._asg_sequences = [[0, 0] for _ in range(8)]
+        self._asg_sequences = [[0, 0] for i in range(8)]
 
     def save_configuration(self, fname: str = None):
         """
@@ -467,6 +465,35 @@ class FrequencyDomainScheduler(Scheduler):
         super(FrequencyDomainScheduler, self).__init__(*args, **kwargs)
         self.name = 'Base ODMR Scheduler'
 
+    # def _scan_freqs_and_get_data_with_ref(self):
+    #     """
+    #     Scanning frequencies & getting data of Counter
+    #     """
+    #     for i, freq in enumerate(self._freqs):
+    #         self._mw_instr.write_float('FREQUENCY', freq)
+    #         print('scanning freq {:.4f} GHz'.format(freq / C.giga))
+    #         #################################
+    #         # 1. MW on
+    #         self._mw_instr.write_bool('OUTPUT:STATE', True)
+    #         # print('MW on/off status:', self._mw_instr.instrument_status_checking)
+    #
+    #         t = threading.Thread(target=self._get_data, name='thread-on-{}'.format(i))
+    #         time.sleep(self.time_pad)
+    #         time.sleep(self.asg_dwell)  # accumulate counts
+    #         t.start()  # begin readout
+    #         time.sleep(self.time_pad)
+    #
+    #         # 2. MW off
+    #         self._mw_instr.write_bool('OUTPUT:STATE', False)
+    #         # print('MW on/off status:', self._mw_instr.instrument_status_checking)
+    #         t = threading.Thread(target=self._get_data_ref, name='thread-off-{}'.format(i))
+    #         time.sleep(self.time_pad)
+    #         time.sleep(self.asg_dwell)  # accumulate counts
+    #         t.start()  # begin readout
+    #         time.sleep(self.time_pad)
+    #
+    #     print('finished data acquisition')
+
     def set_mw_freqs(self, start, end, step):
         """
         Set frequencies for scanning detection (e.g. CW-ODMR, Pulse-ODMR)
@@ -488,19 +515,45 @@ class FrequencyDomainScheduler(Scheduler):
         """
         Scanning frequencies & getting data of Counter
         """
-        # ===================================================================
-        for _ in range(5):
-            self._mw_instr.write_float('FREQUENCY', self._freqs[0])
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('scanning freq {:.3f} GHz (trivial)'.format(self._freqs[0] / C.giga))
-            time.sleep(self.time_pad + self.asg_dwell)
-
-            if self.with_ref:
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
-                time.sleep(self.time_pad + self.asg_dwell)
-        # ===================================================================
+        # fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
+        # fnames = [os.path.join('output', f) for f in fnames]
+        # self.means = []
 
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
+
+        # ===================================================================
+        for i, freq in enumerate(self._freqs[:4]):
+            self._mw_instr.write_float('FREQUENCY', freq)
+            self._mw_instr.write_bool('OUTPUT:STATE', True)
+
+            print('scanning freq {:.3f} GHz'.format(freq / C.giga))
+            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)  # accumulate counts
+            t.start()  # begin readout
+
+            if self.with_ref:
+                # modify the sequences
+                # if self.mw_ttl == 0:
+                #     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
+                # else:
+                #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
+                # mw_off_seq = [0,0]
+                self.mw_control_seq([0, 0])
+                self._mw_instr.write_bool('OUTPUT:STATE', False)
+
+                # reference data acquisition
+                tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
+                time.sleep(self.time_pad)
+                time.sleep(self.asg_dwell)
+                tr.start()
+
+                # recover the sequences
+                self.mw_control_seq(mw_on_seq)
+        self._data.clear()
+        self._data_ref.clear()
+        # ===================================================================
+
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
             self._mw_instr.write_bool('OUTPUT:STATE', True)
@@ -640,40 +693,20 @@ class TimeDomainScheduler(Scheduler):
         """
         Scanning time intervals & getting data of Counter
         """
-        # =======================================================
-        for _ in range(5):
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
-            self._gene_detect_seq(self._times[0])
-            self._asg.start()
-            time.sleep(self.time_pad + self.asg_dwell)
-
-            if self.with_ref:
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
-                time.sleep(self.time_pad + self.asg_dwell)
-
-        # =======================================================
+        # fnames = ['{}-{}.txt'.format(i, uuid.uuid1()) for i in range(len(self._times))]
+        # fnames = [os.path.join('output', f) for f in fnames]
+        # self.means = []
         for i, duration in enumerate(self._times):
             self._gene_detect_seq(duration)
             self._asg.start()
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} ns'.format(duration))
-
-            # Signal readout
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
 
-            # Reference readout
-            if self.with_ref:
-                self.mw_control_seq([0, 0])
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
-                tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
-                time.sleep(self.time_pad)
-                time.sleep(self.asg_dwell)
-                tr.start()
-
+            # self._data.append(self.counter.getData().ravel().tolist())
+            # self.means.append(np.mean(self._data[-1]))
         print('finished data acquisition')
 
     def _acquire_data(self, *args, **kwargs):
@@ -703,12 +736,6 @@ class TimeDomainScheduler(Scheduler):
         self._start_device()
         self._acquire_data()  # scanning time intervals in this loop
         self.stop()
-
-    def _gene_pseudo_detect_seq(self):
-        """
-        Generate pseudo pulses for visualization and regulation
-        """
-        self._gene_detect_seq(sum(list(self._cache.values())[:-1]))
 
     @abc.abstractmethod
     def _gene_detect_seq(self, *args, **kwargs):
