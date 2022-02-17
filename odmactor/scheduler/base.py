@@ -93,7 +93,7 @@ class Scheduler(abc.ABC):
         if not any(sequences):
             raise ValueError('laser_seq, mw_seq and tagger_seq cannot be all None')
         sequences = [seq for seq in sequences if seq is not None]  # non-None sequences
-        lengths = np.unique(list(map(len, sequences)))
+        lengths = np.unique(list(map(sum, sequences)))
         if len(lengths) != 1:
             raise ValueError('input sequences should have the same length')
         t = lengths.item()
@@ -157,6 +157,7 @@ class Scheduler(abc.ABC):
         """
         # 1. run ASG firstly
         self._data.clear()
+        self._data_ref.clear()
         self._asg.start()
 
         # 2. restart self.counter if necessary
@@ -306,6 +307,7 @@ class Scheduler(abc.ABC):
         self._asg_conf['t'] = t * C.nano  # unit: s
         self._asg_conf['N'] = N
         self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']  # duration without padding
+        self.time_pad = 0.035 * self.asg_dwell # 0.035
 
     def _cal_counts_result(self):
         """
@@ -519,8 +521,14 @@ class FrequencyDomainScheduler(Scheduler):
 
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
 
-        for i, freq in enumerate(self._freqs):
+
+
+
+        # ===================================================================
+        for i, freq in enumerate(self._freqs[:4]):
             self._mw_instr.write_float('FREQUENCY', freq)
+            self._mw_instr.write_bool('OUTPUT:STATE', True)
+
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
@@ -528,16 +536,55 @@ class FrequencyDomainScheduler(Scheduler):
             t.start()  # begin readout
             time.sleep(self.time_pad)
 
+
             if self.with_ref:
                 # modify the sequences
                 if self.mw_ttl == 0:
                     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
                 else:
                     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
+                # mw_off_seq = [0,0]
                 self.mw_control_seq(mw_off_seq)
+                self._mw_instr.write_bool('OUTPUT:STATE', False)
 
                 # reference data acquisition
-                tr = threading.Thread(target=self._get_data_ref(), name='thread-ref-{}'.format(i))
+                tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
+                time.sleep(self.time_pad)
+                time.sleep(self.asg_dwell)
+                tr.start()
+                time.sleep(self.time_pad)
+
+                # recover the sequences
+                self.mw_control_seq(mw_on_seq)
+        self._data.clear()
+        self._data_ref.clear()
+        # ===================================================================
+
+
+        for i, freq in enumerate(self._freqs):
+            self._mw_instr.write_float('FREQUENCY', freq)
+            self._mw_instr.write_bool('OUTPUT:STATE', True)
+
+            print('scanning freq {:.3f} GHz'.format(freq / C.giga))
+            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)  # accumulate counts
+            t.start()  # begin readout
+            time.sleep(self.time_pad)
+
+
+            if self.with_ref:
+                # modify the sequences
+                if self.mw_ttl == 0:
+                    mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
+                else:
+                    mw_off_seq = [0, self._asg_conf['t'] / C.nano]
+                # mw_off_seq = [0,0]
+                self.mw_control_seq(mw_off_seq)
+                self._mw_instr.write_bool('OUTPUT:STATE', False)
+
+                # reference data acquisition
+                tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
                 time.sleep(self.time_pad)
                 time.sleep(self.asg_dwell)
                 tr.start()
@@ -578,6 +625,7 @@ class FrequencyDomainScheduler(Scheduler):
         else:
             self._asg_sequences[idx_mw_channel] = mw_seq
             self.asg_connect_and_download_data(self._asg_sequences)
+            self._asg.start()
 
     def run_scanning(self, mw_control: str = 'on'):
         """
@@ -588,11 +636,11 @@ class FrequencyDomainScheduler(Scheduler):
         """
         mw_seq_on = self.mw_control_seq()
         if mw_control == 'off':
-            if self.mw_ttl==0:
+            if self.mw_ttl == 0:
                 mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
             else:
                 mw_off_seq = [0, self._asg_conf['t'] / C.nano]
-            #TODO:check 设置为【0,0】时候微波有没有打开
+            # TODO:check 设置为【0,0】时候微波有没有打开
             self.mw_control_seq(mw_off_seq)
         elif mw_control == 'on':
             pass
@@ -666,8 +714,10 @@ class TimeDomainScheduler(Scheduler):
             self._asg.start()
             print('scanning freq {:.3f} ns'.format(duration))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
-            t.start()  # begin readout
+            t.start()  # begin readou
+            time.sleep(self.time_pad)  # t
 
             # self._data.append(self.counter.getData().ravel().tolist())
             # self.means.append(np.mean(self._data[-1]))
