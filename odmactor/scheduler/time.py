@@ -64,8 +64,7 @@ class RamseyScheduler(TimeDomainScheduler):
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_mw_read=200,
-                           inter_readout=200,
-                           pre_read=50, inter_period=200, N: int = 1000):
+                           inter_readout=200, pre_read=50, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
             laser (no asg control sequence):
@@ -85,6 +84,8 @@ class RamseyScheduler(TimeDomainScheduler):
         :param t_read_sig: time span for fluorescence signal readout
         :param t_read_ref: time span for reference signal readout
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
+        :param inter_mw_read: time interval between MW operation and readout laser pulses
+        :param pre_read: previous time interval before Tagger readout and after laser readout pulses
         :param inter_readout: time span for interval
         :param inter_period: interval between two neighbor periods, e.g. 200
         :param N: number of ASG operation periods for each detection point
@@ -255,7 +256,8 @@ class RelaxationScheduler(TimeDomainScheduler):
         Generate T1 Relaxation detection sequences and download it to ASG
         :param t_free: free precession time (time duration of after MW pi pulse)
         """
-        t_init, inter_init_mw, t_mw = self._cache['t_init'], self._cache['inter_init_mw'], self._cache['t_mw']
+        t_init, t_mw = self._cache['t_init'], self._cache['t_mw']
+        inter_init_mw, pre_read = self._cache['inter_init_mw'], self._cache['pre_read']
         t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
         inter_readout, inter_period = self._cache['inter_readout'], self._cache['inter_period']
         N = self._cache['N']
@@ -263,17 +265,17 @@ class RelaxationScheduler(TimeDomainScheduler):
         if self.ms == 1:
             if self.two_pulse_readout:
                 # meaning t_read_ref is not None:
-                laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig + inter_readout + t_read_ref,
-                             inter_period]
+                laser_seq = [t_init, inter_init_mw + t_mw + t_free,
+                             pre_read + t_read_sig + inter_readout + t_read_ref + inter_period, 0]
                 mw_seq = [0, t_init + inter_init_mw, t_mw,
-                          t_free + t_read_sig + inter_readout + t_read_ref + inter_period]
-                tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_readout, t_read_ref,
-                              inter_period]
+                          t_free + pre_read + t_read_sig + inter_readout + t_read_ref + inter_period]
+                tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free + pre_read, t_read_sig, inter_readout,
+                              t_read_ref, inter_period]
             else:
                 # single-pulse readout (without reference readout)
-                laser_seq = [t_init, inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
-                mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + t_read_sig + inter_period]
-                tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free, t_read_sig, inter_period]
+                laser_seq = [t_init, inter_init_mw + t_mw + t_free, pre_read + t_read_sig + inter_period, 0]
+                mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + pre_read + t_read_sig + inter_period]
+                tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free + pre_read, t_read_sig, inter_period]
         else:
             print('ms == 0')
             if self.two_pulse_readout:
@@ -291,7 +293,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=10000, inter_readout=200,
-                           inter_period=200, N: int = 10000):
+                           pre_read=50, inter_period=200, N: int = 10000):
         """
         Wave form for single period:
             laser (no asg control sequence):
@@ -314,6 +316,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         :param t_read_sig: time span for fluorescence signal readout
         :param t_read_ref: time span for reference signal readout
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
+        :param pre_read: previous time interval before Tagger readout and after laser readout pulses
         :param inter_readout: time span for interval
         :param inter_period: interval between two neighbor periods, e.g. 200
         :param N: number of ASG operation periods for each detection point
@@ -325,6 +328,7 @@ class RelaxationScheduler(TimeDomainScheduler):
             't_read_sig': t_read_sig,
             't_read_ref': t_read_ref,
             'inter_init_mw': inter_init_mw,
+            'pre_read': pre_read,
             'inter_readout': inter_readout,
             'inter_period': inter_period,
             'N': N,
