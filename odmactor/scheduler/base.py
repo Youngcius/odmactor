@@ -61,14 +61,20 @@ class Scheduler(abc.ABC):
         self.output_dir = '../output/'
         if not os.path.exists(self.output_dir):
             os.mkdir(self.output_dir)
+
         if 'mw_ttl' in kwargs.keys():
             self.mw_ttl = kwargs['mw_ttl']  # 1: high-level effective; 0: low level effective
         else:
             self.mw_ttl = 1  # default: high-level effective
+
         if 'with_ref' in kwargs.keys():
             self.with_ref = kwargs['with_ref']
         else:
             self.with_ref = False
+        if 'epoch_omit' in kwargs.keys():
+            self.epoch_omit = kwargs['epoch_omit']
+        else:
+            self.epoch_omit = 0
 
     def asg_connect_and_download_data(self, asg_data: List[List[float]]):
         """
@@ -302,6 +308,20 @@ class Scheduler(abc.ABC):
         self.asg_connect_and_download_data(self._asg_sequences)
         self.asg.start()
 
+    def mw_control_seq(self, mw_seq: List[int] = None) -> Optional[List[int]]:
+        """
+        Get or set current MW control sequence
+        :param mw_seq: designed MW control sequence, optional parameter
+        :return: return current MW control sequence when mw_seq designed, otherwise return None
+        """
+        idx_mw_channel = self.channel['mw'] - 1
+        if mw_seq is None:
+            return self._asg_sequences[idx_mw_channel]
+        else:
+            self._asg_sequences[idx_mw_channel] = mw_seq
+            self.asg_connect_and_download_data(self._asg_sequences)
+            self._asg.start()
+
     def _conf_time_paras(self, t, N):
         """
         Configure characteristic time parameters
@@ -489,7 +509,7 @@ class FrequencyDomainScheduler(Scheduler):
         Scanning frequencies & getting data of Counter
         """
         # ===================================================================
-        for _ in range(5):
+        for _ in range(self.epoch_omit):
             self._mw_instr.write_float('FREQUENCY', self._freqs[0])
             self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} GHz (trivial)'.format(self._freqs[0] / C.giga))
@@ -545,20 +565,6 @@ class FrequencyDomainScheduler(Scheduler):
 
         # 3. save result
         self.save_result(self._gene_data_result_fname())
-
-    def mw_control_seq(self, mw_seq: List[int] = None) -> Optional[List[int]]:
-        """
-        Get or set current MW control sequence
-        :param mw_seq: designed MW control sequence, optional parameter
-        :return: return current MW control sequence when mw_seq designed, otherwise return None
-        """
-        idx_mw_channel = self.channel['mw'] - 1
-        if mw_seq is None:
-            return self._asg_sequences[idx_mw_channel]
-        else:
-            self._asg_sequences[idx_mw_channel] = mw_seq
-            self.asg_connect_and_download_data(self._asg_sequences)
-            self._asg.start()
 
     def run_scanning(self, mw_control: str = 'on'):
         """
@@ -641,7 +647,7 @@ class TimeDomainScheduler(Scheduler):
         Scanning time intervals & getting data of Counter
         """
         # =======================================================
-        for _ in range(5):
+        for _ in range(self.epoch_omit):
             self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
             self._gene_detect_seq(self._times[0])
@@ -708,7 +714,9 @@ class TimeDomainScheduler(Scheduler):
         """
         Generate pseudo pulses for visualization and regulation
         """
-        self._gene_detect_seq(sum(list(self._cache.values())[:-1]))
+        ts = list(self._cache.values())[:-1]
+        t_sum = sum([t for t in ts if t is not None])
+        self._gene_detect_seq(t_sum)
 
     @abc.abstractmethod
     def _gene_detect_seq(self, *args, **kwargs):
