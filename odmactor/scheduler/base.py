@@ -605,7 +605,6 @@ class FrequencyDomainScheduler(Scheduler):
     def configure_odmr_seq(self, *args, **kwargs):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def run_single_step(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -726,6 +725,5 @@ class TimeDomainScheduler(Scheduler):
     def configure_odmr_seq(self, *args, **kwargs):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def run_single_step(self, *args, **kwargs):
         raise NotImplementedError
