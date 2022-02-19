@@ -39,7 +39,8 @@ class Scheduler(abc.ABC):
         self._times = []
         self._asg_sequences = []
         self.reset_asg_sequence()
-        self._asg_conf = {'t': None, 'N': None}  # 就是为了计算 asg_dwell 而控制采样时间而已
+        self._asg_conf = {'t': 0, 'N': 0}  # to calculate self.asg_dwell = N * t
+        self._mw_conf = {'freq': C.giga, 'power': 0}  # current MW parameter settings
         self._configuration = {}
         self._laser_control = True
         self.two_pulse_readout = False  # whether use double-pulse readout
@@ -57,7 +58,6 @@ class Scheduler(abc.ABC):
         self.asg_dwell = 0.0
         self.time_pad = 0.0
         self.time_total = 0.0  # total time for scanning frequencies (estimated)
-        self.mw_power = 0.0  # 0 dBm in default
         self.output_dir = '../output/'
         if not os.path.exists(self.output_dir):
             os.mkdir(self.output_dir)
@@ -219,11 +219,12 @@ class Scheduler(abc.ABC):
         :param regulate_pi: whether regulate built-int MW pi pulse of this Scheduler
         """
         if power is not None:
-            self.mw_power = power
+            self._mw_conf['power'] = power
             self._mw_instr.write_float('POW', power)
             if regulate_pi:  # regulate time duration based on MW power
                 self._regulate_pi_pulse(power=power)  # by power
         if freq is not None:
+            self._mw_conf['freq'] = freq
             self._mw_instr.write_float('FREQUENCY', freq)
         self._mw_instr.write_bool('OUTPUT:STATE', True)
 
@@ -637,10 +638,6 @@ class TimeDomainScheduler(Scheduler):
         else:
             self.time_total = sum(self._times) * C.nano * N  # estimated total time
 
-    def _get_data_with_save(self, fname):
-        np.savetxt(fname, self.counter.getData().ravel())
-        self.counter.clear()
-
     def _scan_times_and_get_data(self):
         """
         Scanning time intervals & getting data of Counter
@@ -715,7 +712,7 @@ class TimeDomainScheduler(Scheduler):
         """
         ts = list(self._cache.values())[:-1]
         t_sum = sum([t for t in ts if t is not None])
-        self._gene_detect_seq(t_sum)
+        self._gene_detect_seq(int(t_sum / 40) * 10)
 
     @abc.abstractmethod
     def _gene_detect_seq(self, *args, **kwargs):
@@ -725,5 +722,22 @@ class TimeDomainScheduler(Scheduler):
     def configure_odmr_seq(self, *args, **kwargs):
         raise NotImplementedError
 
-    def run_single_step(self, *args, **kwargs):
-        raise NotImplementedError
+    def run_single_step(self, t_free) -> List[float]:
+        """
+        Single-interval & single-power setting for running the scheduler once
+        :param t_free: free precession time, unit: ns
+        :return: 1-D array-like data: [N,]
+        """
+        print('running with time = {:.3f} ns, MW power = {:.2f} dBm ...'.format(self.asg_dwell, self._mw_conf['power']))
+
+        # generate ASG sequences
+        self._gene_detect_seq(t_free)
+
+        # start sequence for time: N * t
+        self._start_device()
+        time.sleep(2)  # 先让激光和微波开几秒
+        time.sleep(self.asg_dwell)
+        counts = self.counter.getData().ravel().tolist()
+        self.stop()
+
+        return counts

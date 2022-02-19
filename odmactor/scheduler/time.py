@@ -22,7 +22,7 @@ from odmactor import utils
 
 class RamseyScheduler(TimeDomainScheduler):
     """
-    Ramsey detection scheduler
+    Ramsey detecting scheduler
     """
 
     def __init__(self, *args, **kwargs):
@@ -68,17 +68,17 @@ class RamseyScheduler(TimeDomainScheduler):
         """
         Wave form for single period:
             laser (no asg control sequence):
-            -----                       ---------
-            |   |                       |       |
-            |   |-----------------------|       |
+            -------                       ----------
+            |     |                       |        |
+            |     |-----------------------|        |
             asg microwave channel:
-                  ---               ---
-                  | |  (<------->)  | |
-            ------| |---------------| |----------
+                    ---               ---
+                    | |  (<------->)  | |
+            --------| |---------------| |-----------
             asg tagger acquisition channel:
-                                        ---   ---
-                                        | |   | |
-            ----------------------------| |---| |
+                                          ---  ---
+                                          | |  | |
+            ------------------------------| |--| |--
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
@@ -107,34 +107,10 @@ class RamseyScheduler(TimeDomainScheduler):
         if t_read_ref is not None:
             self.two_pulse_readout = True
 
-    def run_single_step(self, t_free, power=None) -> List[float]:
-        """
-        Single-interval & single-power setting for running the scheduler
-        :param power: MW power, unit: dBm
-        :param t_free: free precession time, unit: ns
-        :return: 1-D array: [N,]
-        """
-        print('running for time interval = {:.3f} ns, power = {:.2f} dBm ...'.format(t_free, power))
-
-        # set MW parameters
-        self.configure_mw_paras(power, regulate_pi=True)
-
-        # generate ASG sequences
-        self._gene_detect_seq(t_free)
-
-        # start sequence for time: N*t
-        self._start_device()
-        time.sleep(0.5)  # 先让激光和微波开几秒
-        time.sleep(self.asg_dwell)
-        counts = self.counter.getData().ravel().tolist()
-        self.stop()
-
-        return counts
-
 
 class RabiScheduler(TimeDomainScheduler):
     """
-    Ramsey detection scheduler
+    Ramsey detecting scheduler
     """
 
     def __init__(self, *args, **kwargs):
@@ -143,7 +119,7 @@ class RabiScheduler(TimeDomainScheduler):
 
     def _gene_detect_seq(self, t_mw):
         """
-        Generate Rabi detection sequences and download it to ASG
+        Generate Rabi detecting sequences and download it to ASG
         :param t_mw: free precession time (time duration between two MW pulse)
         """
         t_init, inter_init_mw = self._cache['t_init'], self._cache['inter_init_mw']
@@ -176,17 +152,17 @@ class RabiScheduler(TimeDomainScheduler):
         """
         Wave form for single period:
             laser (no asg control sequence):
-            -----                        ---------
-            |   |                        |       |
-            |   |------------------------|       |
+            -------                        ----------
+            |     |                        |        |
+            |     |------------------------|        |
             asg microwave channel (variable duration):
-                  ---------------------
-                  |  (<----------->)  |
-            ------|                   |----------
+                    ---------------------
+                    |  (<----------->)  |
+            --------|                   |------------
             asg tagger acquisition channel:
-                                         ---   ---
-                                         | |   | |
-            -----------------------------| |---| |
+                                           ---  ---
+                                           | |  | |
+            -------------------------------| |--| |--
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
@@ -196,7 +172,7 @@ class RabiScheduler(TimeDomainScheduler):
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
         :param inter_readout: time span for interval
         :param inter_period: interval between two neighbor periods, e.g. 200
-        :param N: number of ASG operation periods for each detection point
+        :param N: number of ASG operation periods for each detecting point
         """
         self._cache = {
             't_init': t_init,
@@ -212,30 +188,6 @@ class RabiScheduler(TimeDomainScheduler):
         self._asg_conf['N'] = N
         if t_read_ref is not None:
             self.two_pulse_readout = True
-
-    def run_single_step(self, t_mw, power=None) -> List[float]:
-        """
-        Single-interval & single-power setting for running the scheduler
-        :param power: MW power, unit: dBm
-        :param t_mw: free precession time, unit: ns
-        :return: 1-D array: [N,]
-        """
-        print('running for MW operation time = {:.3f} ns, power = {:.2f} dBm ...'.format(t_mw, power))
-
-        # set MW parameters
-        self.configure_mw_paras(power)
-
-        # generate ASG sequences
-        self._gene_detect_seq(t_mw)
-
-        # start sequence for time: N*t
-        self._start_device()
-        time.sleep(0.5)  # 先让激光和微波开几秒
-        time.sleep(self.asg_dwell)
-        counts = self.counter.getData().ravel().tolist()
-        self.stop()
-
-        return counts
 
 
 class RelaxationScheduler(TimeDomainScheduler):
@@ -253,7 +205,7 @@ class RelaxationScheduler(TimeDomainScheduler):
 
     def _gene_detect_seq(self, t_free):
         """
-        Generate T1 Relaxation detection sequences and download it to ASG
+        Generate T1 Relaxation detecting sequences and download it to ASG
         :param t_free: free precession time (time duration of after MW pi pulse)
         """
         t_init, t_mw = self._cache['t_init'], self._cache['t_mw']
@@ -277,7 +229,6 @@ class RelaxationScheduler(TimeDomainScheduler):
                 mw_seq = [0, t_init + inter_init_mw, t_mw, t_free + pre_read + t_read_sig + inter_period]
                 tagger_seq = [0, t_init + inter_init_mw + t_mw + t_free + pre_read, t_read_sig, inter_period]
         else:
-            print('ms == 0')
             if self.two_pulse_readout:
                 laser_seq = [t_init, t_free, t_read_sig + inter_readout + t_read_ref, inter_period]
                 mw_seq = [0, sum(laser_seq)]
@@ -297,20 +248,20 @@ class RelaxationScheduler(TimeDomainScheduler):
         """
         Wave form for single period:
             laser (no asg control sequence):
-            -----                      ---------
-            |   |                      |       |
-            |   |----------------------|       |
+            -------                      ----------
+            |     |                      |        |
+            |     |----------------------|        |
             asg microwave channel (variable duration):
-                  -----
-                  |   | (<--------->)    ms = 1
-            ------|   |------------------------
+                    -----
+                    |   | (<--------->)    ms = 1
+            --------|   |--------------------------
             or
                  (<----------------->)  ms = 0
-            -----------------------------------
+            ---------------------------------------
             asg tagger acquisition channel:
-                                       ---   ---
-                                       | |   | |
-            ---------------------------| |---| |
+                                         ---  ---
+                                         | |  | |
+            -----------------------------| |--| |--
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
@@ -319,7 +270,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
         :param inter_readout: time span for interval
         :param inter_period: interval between two neighbor periods, e.g. 200
-        :param N: number of ASG operation periods for each detection point
+        :param N: number of ASG operation periods for each detecting point
         """
         t_mw = self.pi_pulse['time'] / C.nano  # pi/2 pulse time duration, s --> ns
         self._cache = {
@@ -337,26 +288,127 @@ class RelaxationScheduler(TimeDomainScheduler):
         if t_read_ref is not None:
             self.two_pulse_readout = True
 
-    def run_single_step(self, t_free, power=None) -> List[float]:
+
+class HahnEchoScheduler(TimeDomainScheduler):
+    """
+    Hahn Echo detecting scheduler
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(HahnEchoScheduler, self).__init__(*args, **kwargs)
+        self.name = 'Hahn Echo Scheduler'
+
+    def _gene_detect_seq(self, t_free):
         """
-        Single-interval & single-power setting for running the scheduler
-        :param power: MW power, unit: dBm
-        :param t_free: free precession time (time duration of after MW pi pulse)
-        :return: 1-D array: [N,]
+        Generate Hahn Echo sequences and download it to ASG
+        :param t_free: free precession time between neighbor the MW pi pulse and pi/2 pulse
         """
-        print('running for relaxation time = {:.3f} ns, power = {:.2f} dBm ...'.format(t_free, power))
+        t_init, t_mw_half_pi = self._cache['t_init'], self._cache['t_mw_half_pi']
+        inter_init_mw, inter_mw_read = self._cache['inter_init_mw'], self._cache['inter_mw_read']
+        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
+        pre_read = self._cache['pre_read']
+        inter_readout, inter_period = self._cache['inter_period'], self._cache['inter_readout']
+        N = self._cache['N']
+        t_mw_pi = t_mw_half_pi * 2
 
-        # set MW parameters
-        self.configure_mw_paras(power, regulate_pi=True)
+        # generate ASG wave forms
+        if self.two_pulse_readout:
+            laser_seq = [t_init,
+                         inter_init_mw + t_mw_half_pi * 2 + t_free * 2 + t_mw_pi + inter_mw_read,
+                         pre_read + t_read_sig + inter_readout + t_read_ref + inter_period, 0]
+            mw_seq = [0, t_init + inter_init_mw,
+                      t_mw_half_pi,
+                      t_free,
+                      t_mw_pi,
+                      t_free,
+                      t_mw_half_pi,
+                      inter_mw_read + pre_read + t_read_sig + inter_readout + t_read_ref + inter_period]
+            tagger_seq = [0,
+                          t_init + inter_init_mw + t_mw_half_pi * 2 + t_mw_pi + t_free * 2 + + inter_mw_read + pre_read,
+                          t_read_sig,
+                          inter_readout,
+                          t_read_ref,
+                          inter_period]
+        else:
+            # single-pulse readout (without reference readout)
+            laser_seq = [t_init,
+                         inter_init_mw + t_mw_half_pi * 2 + t_free * 2 + t_mw_pi + inter_mw_read,
+                         pre_read + t_read_sig + inter_period, 0]
+            mw_seq = [0, t_init + inter_init_mw,
+                      t_mw_half_pi,
+                      t_free,
+                      t_mw_pi,
+                      t_free,
+                      t_mw_half_pi,
+                      inter_mw_read + pre_read + t_read_sig + inter_period]
+            tagger_seq = [0,
+                          t_init + inter_init_mw + t_mw_half_pi * 2 + t_mw_pi + t_free * 2 + + inter_mw_read + pre_read,
+                          t_read_sig,
+                          inter_period]
 
-        # generate ASG sequences
-        self._gene_detect_seq(t_free)
+        if self.mw_ttl == 0:
+            mw_seq = utils.flip_sequence(mw_seq)
 
-        # start sequence for time: N*t
-        self._start_device()
-        time.sleep(0.5)  # 先让激光和微波开几秒
-        time.sleep(self.asg_dwell)
-        counts = self.counter.getData().ravel().tolist()
-        self.stop()
+        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
 
-        return counts
+    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
+                           inter_readout=200, inter_period=200, N: int = 100000):
+        """
+        Wave form for single period:
+            laser (no asg control sequence):
+            -------                       ----------
+            |     |                       |        |
+            |     |-----------------------|        |
+            asg microwave channel:
+                    ---               ---
+                    | |  (<------->)  | |
+            --------| |---------------| |-----------
+            asg tagger acquisition channel:
+                                          ---  ---
+                                          | |  | |
+            ------------------------------| |--| |--
+        All units for the parameters is 'ns'
+        :param t_init: time for laser initialization
+        :param t_read_sig: time span for fluorescence signal readout
+        :param t_read_ref: time span for reference signal readout
+        :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
+        :param inter_mw_read: time interval between MW operation and readout laser pulses
+        :param pre_read: previous time interval before Tagger readout and after laser readout pulses
+        :param inter_readout: time span for interval
+        :param inter_period: interval between two neighbor periods, e.g. 200
+        :param N: number of ASG operation periods for each detection point
+        """
+        t_mw_half_pi = self.pi_pulse['time'] / 2 / C.nano  # pi/2 pulse time duration, s --> ns
+        self._cache = {
+            't_init': t_init,
+            't_mw_half_pi': t_mw_half_pi,
+            't_read_sig': t_read_sig,
+            't_read_ref': t_read_ref,
+            'inter_init_mw': inter_init_mw,
+            'inter_mw_read': inter_mw_read,
+            'pre_read': pre_read,
+            'inter_readout': inter_readout,
+            'inter_period': inter_period,
+            'N': N,
+        }
+        self._asg_conf['N'] = N
+        if t_read_ref is not None:
+            self.two_pulse_readout = True
+
+
+class HighDecouplingScheduler(TimeDomainScheduler):
+    """
+    High-order Dynamical Decoupling detecting scheduler
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(HighDecouplingScheduler, self).__init__(*args, **kwargs)
+        self.name = 'High-order Dynamical Decoupling Scheduler'
+
+    def _gene_detect_seq(self, t_free):
+        pass
+
+    # def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
+    #                        inter_readout=200, inter_period=200, N: int = 100000):
+    def configure_odmr_seq(self, *args, **kwargs):
+        pass
