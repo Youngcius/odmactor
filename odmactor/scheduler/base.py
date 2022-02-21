@@ -512,19 +512,19 @@ class FrequencyDomainScheduler(Scheduler):
         # ===================================================================
         for _ in range(self.epoch_omit):
             self._mw_instr.write_float('FREQUENCY', self._freqs[0])
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
+            # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} GHz (trivial)'.format(self._freqs[0] / C.giga))
             time.sleep(self.time_pad + self.asg_dwell)
 
             if self.with_ref:
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
+                # self._mw_instr.write_bool('OUTPUT:STATE', False)
                 time.sleep(self.time_pad + self.asg_dwell)
         # ===================================================================
 
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
+            # self._mw_instr.write_bool('OUTPUT:STATE', True)
 
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -534,13 +534,14 @@ class FrequencyDomainScheduler(Scheduler):
 
             if self.with_ref:
                 # modify the sequences
-                if self.mw_ttl == 0:
-                    mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
-                else:
-                    mw_off_seq = [0, self._asg_conf['t'] / C.nano]
+                # if self.mw_ttl == 0:
+                #     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
+                # else:
+                #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
                 # mw_off_seq = [0,0]
-                self.mw_control_seq(mw_off_seq)
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
+                # self.mw_control_seq(mw_off_seq)
+                self.mw_control_seq([0,0])
+                # self._mw_instr.write_bool('OUTPUT:STATE', False)
 
                 # reference data acquisition
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
@@ -644,22 +645,22 @@ class TimeDomainScheduler(Scheduler):
         """
         # =======================================================
         for _ in range(self.epoch_omit):
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
+            # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
             self._gene_detect_seq(self._times[0])
             self._asg.start()
             time.sleep(self.time_pad + self.asg_dwell)
 
             if self.with_ref:
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
+                # self._mw_instr.write_bool('OUTPUT:STATE', False)
                 time.sleep(self.time_pad + self.asg_dwell)
 
         # =======================================================
         for i, duration in enumerate(self._times):
             self._gene_detect_seq(duration)
             self._asg.start()
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('scanning freq {:.3f} ns'.format(duration))
+            # self._mw_instr.write_bool('OUTPUT:STATE', True)
+            print('scanning time interval: {:.3f} ns'.format(duration))
 
             # Signal readout
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -670,7 +671,7 @@ class TimeDomainScheduler(Scheduler):
             # Reference readout
             if self.with_ref:
                 self.mw_control_seq([0, 0])
-                self._mw_instr.write_bool('OUTPUT:STATE', False)
+                # self._mw_instr.write_bool('OUTPUT:STATE', False)
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
                 time.sleep(self.time_pad)
                 time.sleep(self.asg_dwell)
