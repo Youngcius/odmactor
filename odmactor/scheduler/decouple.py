@@ -21,8 +21,5 @@ class DynamicalDecouplingScheduler(Scheduler):
         super(DynamicalDecouplingScheduler, self).__init__(*args, **kwargs)
         self.name = 'Dynamical Decoupling Scheduler'
 
-
     def configure_odmr_seq(self, *args, **kwargs):
         pass
-
-

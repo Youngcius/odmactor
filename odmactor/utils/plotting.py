@@ -2,7 +2,6 @@
 Utils plotting functions
 """
 
-from time import time
 from typing import List
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -11,8 +10,6 @@ from matplotlib.figure import Figure
 def plot_pulse_odmr():
     pass
 
-
-# TODO: 合理的公式拟合？？有没有必要呢
 
 def plot_ramsey(times: List[float], contrast: List[float], fname: str = None) -> Figure:
     """

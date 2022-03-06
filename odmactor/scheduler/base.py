@@ -1,7 +1,6 @@
 """
 Scheduler abstract base class
 """
-
 import abc
 import datetime
 import time
@@ -185,7 +184,7 @@ class Scheduler(abc.ABC):
 
     def run(self):
         """
-        很粗糙的一个调度方法，TODO: 考虑要不要 delete
+        Rough scheduling method
         1) start device
         2) acquire data timely
         """
@@ -534,14 +533,7 @@ class FrequencyDomainScheduler(Scheduler):
 
             if self.with_ref:
                 # modify the sequences
-                # if self.mw_ttl == 0:
-                #     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
-                # else:
-                #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
-                # mw_off_seq = [0,0]
-                # self.mw_control_seq(mw_off_seq)
-                self.mw_control_seq([0,0])
-                # self._mw_instr.write_bool('OUTPUT:STATE', False)
+                self.mw_control_seq([0, 0])
 
                 # reference data acquisition
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
@@ -577,12 +569,6 @@ class FrequencyDomainScheduler(Scheduler):
         """
         mw_seq_on = self.mw_control_seq()
         if mw_control == 'off':
-            # TODO: delete the following
-            # if self.mw_ttl == 0:
-            #     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
-            # else:
-            #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
-            # self.mw_control_seq(mw_off_seq)
             self.mw_control_seq([0, 0])
         elif mw_control == 'on':
             pass
