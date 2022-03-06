@@ -138,7 +138,7 @@ This is a T/D convertor as well as A/D convertor necessary for data acquisition.
 
 ### Code example
 
-More examples could be found in the "./project/tutorial/" folder. Herein is a typical scheduling pipeline instance.
+More examples could be found in the [example](./example/) folder. Herein is a typical scheduling pipeline instance.
 
 ```python
 # ------- Pulse ODMR Measurement -------
