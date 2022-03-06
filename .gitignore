@@ -133,3 +133,10 @@ dmypy.json
 .idea/
 .pytest_cache
 
+
+
+# Personam files
+#zhy/
+#project/
+#test/
+#output/
