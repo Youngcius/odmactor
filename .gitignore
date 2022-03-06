@@ -136,8 +136,8 @@ dmypy.json
 
 
 # Personam files
-zhy/
-project/
-test/
-output/
+# zhy/
+# project/
+# test/
+# output/
 
