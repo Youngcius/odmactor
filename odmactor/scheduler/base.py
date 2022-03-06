@@ -540,7 +540,7 @@ class FrequencyDomainScheduler(Scheduler):
                 #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
                 # mw_off_seq = [0,0]
                 # self.mw_control_seq(mw_off_seq)
-                self.mw_control_seq([0,0])
+                self.mw_control_seq([0, 0])
                 # self._mw_instr.write_bool('OUTPUT:STATE', False)
 
                 # reference data acquisition
