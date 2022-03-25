@@ -41,13 +41,15 @@ class SequenceString:
         return '\n'.join(self.strings)
 
 
+
 def seq_to_fig(seq: List[List[Union[float, int]]]) -> Figure:
     """
     Convert sequences (list of list) into a Figure instance
     """
+    N = len(seq)#num_channels
     idx_exist = [i for i, l in enumerate(seq) if sum(l) > 0]
-    n = len(idx_exist)  # num_channels
-    channels = ['ch {}'.format(i + 1) for i in idx_exist]
+    n = len(idx_exist)  # effective number of channels
+    channels = ['ch {}'.format(i + 1) for i in range(N)]
     seq_eff = [seq[i] for i in idx_exist]
     gcd = reduce(math.gcd, list(map(int, reduce(concat, seq_eff))))
     for i in range(n):
@@ -55,30 +57,83 @@ def seq_to_fig(seq: List[List[Union[float, int]]]) -> Figure:
     baselines = []
     levels = []
 
-    for i in range(n):
-        # 0,1,2,3,...
+    seq_all = [[] for i in range(N)]
+    length = sum(seq_eff[0])
+    for i in range(N):
+        if i in idx_exist:
+            seq_all[i] = seq_eff[idx_exist.index(i)]
+        else:
+            seq_all[i] = [0, length] # 0 个 '1', length 个 '0'
+
+    for i in range(N):
+        # 0,1,2,3,...,N-1
         level = []
         j = 0
-        l = len(seq_eff[i])
+        l = len(seq_all[i])
         while j < l:
-            level += [1] * seq_eff[i][j] + [0] * seq_eff[i][j + 1]
+            level += [1] * seq_all[i][j] + [0] * seq_all[i][j + 1]
             j += 2
 
-        b = 1.1 * i
+        b = 1.2 * i
         level = [lev + b for lev in level]
         baselines.append(b)
         levels.append(level)
+
     fig = plt.figure(figsize=(14, 2 * len(idx_exist)))
     for i, ch in enumerate(channels):
-        plt.stairs(levels[i], baseline=baselines[i], label=ch)
-    plt.legend(loc='upper left')
-    plt.title('Sequences')
-    plt.ylabel('channel')
-    plt.xlabel('time ({} ns)'.format(int(gcd)))
+        plt.stairs(levels[i], baseline=baselines[i]-0.03,label=ch, fill=True)
+    plt.title('Sequences', fontsize=20)
+    plt.xlabel('time ({} ns)'.format(int(gcd)), fontsize=15)
+    plt.yticks(baselines, channels, fontsize=13)
+
     plt.xlim(0, max([sum(s) for s in seq_eff]))
     plt.ylim(-0.1, max(levels[-1]) + 0.1)
-    plt.yticks([])
+    plt.xticks(fontsize=13)
     return fig
+
+
+
+
+
+
+# def seq_to_fig(seq: List[List[Union[float, int]]]) -> Figure:
+#     """
+#     Convert sequences (list of list) into a Figure instance
+#     """
+#     idx_exist = [i for i, l in enumerate(seq) if sum(l) > 0]
+#     n = len(idx_exist)  # num_channels
+#     channels = ['ch {}'.format(i + 1) for i in idx_exist]
+#     seq_eff = [seq[i] for i in idx_exist]
+#     gcd = reduce(math.gcd, list(map(int, reduce(concat, seq_eff))))
+#     for i in range(n):
+#         seq_eff[i] = [int(t / gcd) for t in seq_eff[i]]
+#     baselines = []
+#     levels = []
+
+#     for i in range(n):
+#         # 0,1,2,3,...
+#         level = []
+#         j = 0
+#         l = len(seq_eff[i])
+#         while j < l:
+#             level += [1] * seq_eff[i][j] + [0] * seq_eff[i][j + 1]
+#             j += 2
+
+#         b = 1.1 * i
+#         level = [lev + b for lev in level]
+#         baselines.append(b)
+#         levels.append(level)
+#     fig = plt.figure(figsize=(14, 2 * len(idx_exist)))
+#     for i, ch in enumerate(channels):
+#         plt.stairs(levels[i], baseline=baselines[i], label=ch)
+#     plt.legend(loc='upper left')
+#     plt.title('Sequences')
+#     plt.ylabel('channel')
+#     plt.xlabel('time ({} ns)'.format(int(gcd)))
+#     plt.xlim(0, max([sum(s) for s in seq_eff]))
+#     plt.ylim(-0.1, max(levels[-1]) + 0.1)
+#     plt.yticks([])
+#     return fig
 
 
 def seq_to_str(seq: List[List[float]]) -> str:

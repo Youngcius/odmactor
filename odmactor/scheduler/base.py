@@ -524,7 +524,8 @@ class FrequencyDomainScheduler(Scheduler):
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
         for i, freq in enumerate(self._freqs):
             self._mw_instr.write_float('FREQUENCY', freq)
-            # self._mw_instr.write_bool('OUTPUT:STATE', True)
+            self._mw_instr.write_bool('OUTPUT:STATE', True)  # 3.24 修改
+            time.sleep(0.1)
 
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -542,6 +543,10 @@ class FrequencyDomainScheduler(Scheduler):
                 # self.mw_control_seq(mw_off_seq)
                 self.mw_control_seq([0, 0])
                 # self._mw_instr.write_bool('OUTPUT:STATE', False)
+
+                # --------------- 3.24 修改
+                self._mw_instr.write_bool('OUTPUT:STATE', False)
+                time.sleep(0.1)
 
                 # reference data acquisition
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
@@ -647,6 +652,7 @@ class TimeDomainScheduler(Scheduler):
         for _ in range(self.epoch_omit):
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
+
             self._gene_detect_seq(self._times[0])
             self._asg.start()
             time.sleep(self.time_pad + self.asg_dwell)
@@ -661,6 +667,9 @@ class TimeDomainScheduler(Scheduler):
             self._asg.start()
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning time interval: {:.3f} ns'.format(duration))
+            # ----- 3.24 修改
+            self._mw_instr.write_bool('OUTPUT:STATE', True)
+            time.sleep(0.1)
 
             # Signal readout
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -671,7 +680,10 @@ class TimeDomainScheduler(Scheduler):
             # Reference readout
             if self.with_ref:
                 self.mw_control_seq([0, 0])
-                # self._mw_instr.write_bool('OUTPUT:STATE', False)
+                # ----- 3.24 修改
+                self._mw_instr.write_bool('OUTPUT:STATE', False)
+                time.sleep(0.1)
+
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
                 time.sleep(self.time_pad)
                 time.sleep(self.asg_dwell)
