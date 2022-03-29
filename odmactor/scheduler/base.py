@@ -127,7 +127,8 @@ class Scheduler(abc.ABC):
             self._asg_sequences[idx_tagger_channel] = tagger_seq
 
         # connect & download pulse data
-        self.asg_connect_and_download_data(self._asg_sequences)
+        self._asg.load_data(self._asg_sequences)
+        # self.asg_connect_and_download_data(self._asg_sequences)
 
     def configure_tagger_counting(self, apd_channel: int = None, asg_channel: int = None, reader: str = 'counter'):
         """
