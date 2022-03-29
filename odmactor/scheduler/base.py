@@ -71,10 +71,16 @@ class Scheduler(abc.ABC):
             self.with_ref = kwargs['with_ref']
         else:
             self.with_ref = False
+
         if 'epoch_omit' in kwargs.keys():
             self.epoch_omit = kwargs['epoch_omit']
         else:
             self.epoch_omit = 0
+
+        if 'mw_on_off' in kwargs.keys():
+            self.mw_on_off = kwargs['mw_on_off']
+        else:
+            self.mw_on_off = False  # if True, on/off MW when using ASG control
 
     # def asg_connect_and_download_data(self, asg_data: List[List[float]]):
     #     """
@@ -529,8 +535,9 @@ class FrequencyDomainScheduler(Scheduler):
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
         for i, freq in enumerate(self._freqs):
             self._mw_instr.set_frequency(freq)
-            # self._mw_instr.start()  # 3.24 修改
-            # time.sleep(0.1)
+            if self.mw_on_off:
+                self._mw_instr.start()  # 3.24 修改
+                time.sleep(0.1)
 
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -547,11 +554,11 @@ class FrequencyDomainScheduler(Scheduler):
                 # mw_off_seq = [0,0]
                 # self.mw_control_seq(mw_off_seq)
                 self.mw_control_seq([0, 0])
-                # self._mw_instr.write_bool('OUTPUT:STATE', False)
 
                 # --------------- 3.24 修改
-                # self._mw_instr.stop()
-                # time.sleep(0.1)
+                if self.mw_on_off:
+                    self._mw_instr.stop()
+                    time.sleep(0.1)
 
                 # reference data acquisition
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
@@ -673,8 +680,9 @@ class TimeDomainScheduler(Scheduler):
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning time interval: {:.3f} ns'.format(duration))
             # ----- 3.24 修改
-            # self._mw_instr.start()
-            # time.sleep(0.1)
+            if self.mw_on_off:
+                self._mw_instr.start()
+                time.sleep(0.1)
 
             # Signal readout
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -686,8 +694,9 @@ class TimeDomainScheduler(Scheduler):
             if self.with_ref:
                 self.mw_control_seq([0, 0])
                 # ----- 3.24 修改
-                # self._mw_instr.stop()
-                # time.sleep(0.1)
+                if self.mw_on_off:
+                    self._mw_instr.stop()
+                    time.sleep(0.1)
 
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
                 time.sleep(self.time_pad)
