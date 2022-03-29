@@ -1,8 +1,5 @@
 from odmactor.utils.asg.ASG8005_PythonSDK import ASG8005
 
-ASG = ASG8005
-
-
 """
 ASG sequences example:
 ------------
