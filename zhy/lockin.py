@@ -1,10 +1,12 @@
 import time
 import pyvisa
+import numpy as np
+from random import randrange
 from pymeasure import instruments
 
 
 class LockInAmplifier(instruments.srs.SR830):
-    def __init__(self, **kwargs):
+    def __init__(self, N, **kwargs):
         rm = pyvisa.ResourceManager()
         rs_list = rm.list_resources()
         found = False
@@ -17,56 +19,37 @@ class LockInAmplifier(instruments.srs.SR830):
         if not found:
             print('Lock-in Amplifier is not found!')
 
-        self.cache = []
+        if found:
+            self.cache = [self.magnitude for _ in range(N)]
 
-    def get_data_with_time(self, interval=1e-6, num=100):
-        self.cache.clear()
-        for _ in range(num):
-            time.sleep(interval)
-            self.cache.append(self.magnitude)
+    def get_data_with_time(self, interval=1e-6):
+        # self.cache.clear()
+        # for _ in range(num):
+        #     time.sleep(interval)
+        #     self.cache.append(self.magnitude)
+        # time.sleep(interval)
+        self.cache.append(self.magnitude)
+        self.cache.pop(0)
         return self.cache
 
 
-# ============================
-import asyncio
-import numpy as np
-from ipywidgets import Button
-import plotly.graph_objs as go
+class Lister:
+    def __init__(self, N: int):
+        self.l = np.random.randint(0, 100, N).tolist()
 
-N = 1000
-lockin = LockInAmplifier()
+    def new(self):
+        print('new')
+        a = randrange(0, 100)
+        self.l = self.l[1:] + [a]
+        return self.l
 
-# create a figure widget and a plot
-fig_trace = go.FigureWidget()
-# fig_trace.add_scatter(x=trace.getIndex(), y=trace.getData()[0])
-fig_trace.add_scatter(x=range(N), y=lockin.get_data_with_time(num=N))
-
-
-async def update_trace():
-    """Update the plot every 0.1 s"""
-    while True:
-        # fig_trace.data[0].y = trace.getData()[0]
-        fig_trace.data[0].y = lockin.get_data_with_time(num=N)
-
-        await asyncio.sleep(0.1)
+    def cur(self):
+        return self.l
 
 
-# If this cell is re-excecuted and there was a previous task, stop it first to avoid a dead daemon
-try:
-    task_trace.cancel()
-except:
-    pass
+import os
+print(os.getcwd())
 
-loop = asyncio.get_event_loop()
-task_trace = loop.create_task(update_trace())
-
-# create a stop button
-button_trace_stop = Button(description='stop')
-button_trace_stop.on_click(lambda a: task_trace.cancel())
-
-display(fig_trace, button_trace_stop)
-
-#
 # cache = deque()
 #
 # fig, ax = plt.subplots()

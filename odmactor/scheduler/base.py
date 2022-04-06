@@ -79,6 +79,10 @@ class Scheduler(abc.ABC):
         kwargs.setdefault('epoch_omit', 0)
         self.epoch_omit = kwargs['epoch_omit']
 
+        # on/off MW when on/off ASG's MW channel
+        kwargs.setdefault('mw_on_off', False)
+        self.mw_on_off = kwargs['mw_on_off']
+
         # with lockin or tagger
         kwargs.setdefault('with_lockin', False)
         self.with_lockin = kwargs['with_lockin']
@@ -210,7 +214,7 @@ class Scheduler(abc.ABC):
         self.asg.start()
 
         # 2. restart self.counter or self.lockin if necessary
-        if not self.counter.isRunning():
+        if self.counter is not None:
             self.counter.start()
 
         # 3. run MW then
@@ -220,28 +224,29 @@ class Scheduler(abc.ABC):
     def _get_data(self):
         if self.with_lockin:
             # from lockin
-            tmp = []
-            for _ in range(self._asg_conf['N']):
-                time.sleep(self._asg_conf['t'])
-                tmp.append(self.lockin.magnitude)
+            print('use lockin')
+            tmp = [self.lockin.magnitude for _ in range(self._asg_conf['N'])]
+            print(tmp)
             self._data.append(tmp)
         else:
             # from tagger
+            print('use tagger')
             self._data.append(self.counter.getData().ravel().tolist())
             self.counter.clear()
+        print('signal readout finished')
 
     def _get_data_ref(self):
         if self.with_lockin:
             # from lockin
-            tmp = []
-            for _ in range(self._asg_conf['N']):
-                time.sleep(self._asg_conf['t'])
-                tmp.append(self.lockin.magnitude)
+            print('use lockin')
+            tmp = [self.lockin.magnitude for _ in range(self._asg_conf['N'])]
+            print(tmp)
             self._data_ref.append(tmp)
         else:
             # from tagger
             self._data_ref.append(self.counter.getData().ravel().tolist())
             self.counter.clear()
+        print('reference readout finished')
 
     def run(self):
         """
@@ -257,7 +262,8 @@ class Scheduler(abc.ABC):
         """
         Stop hardware (ASG, MW, Tagger) scheduling
         """
-        self.counter.stop()
+        if self.counter is not None:
+            self.counter.stop()
         self.asg.stop()
         self.mw.stop()
         print('Stopped: Scheduling process has stopped')
@@ -266,9 +272,12 @@ class Scheduler(abc.ABC):
         """
         Release instrument (ASG, MW, Tagger) resources
         """
-        self.asg.close()
-        self.mw.close()
-        tt.freeTimeTagger(self.tagger)
+        if self.asg is not None:
+            self.asg.close()
+        if self.mw is not None:
+            self.mw.close()
+        if not self.with_lockin and self.tagger is not None:
+            tt.freeTimeTagger(self.tagger)
         print('Closed: All instrument resources has been released')
 
     def configure_mw_paras(self, power: float = None, freq: float = None, regulate_pi: bool = False, *args, **kwargs):
@@ -520,14 +529,6 @@ class Scheduler(abc.ABC):
         self.mw = value
 
     @property
-    def asg(self):
-        return self.asg
-
-    @asg.setter
-    def asg(self, value: ASG):
-        self.asg = value
-
-    @property
     def result(self) -> List[List[float]]:
         return self._result
 
@@ -589,30 +590,25 @@ class FrequencyDomainScheduler(Scheduler):
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
         for i, freq in enumerate(self._freqs):
             self.mw.set_frequency(freq)
+
+            # need to turn on MW again
             if self.mw_on_off:
-                self.mw.start()  # 3.24 修改
-                time.sleep(0.1)
+                self.mw.start()
 
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)  # accumulate counts
             t.start()  # begin readout
+            t.join()
 
             if self.with_ref:
-                # modify the sequences
-                # if self.mw_ttl == 0:
-                #     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
-                # else:
-                #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
-                # mw_off_seq = [0,0]
-                # self.mw_control_seq(mw_off_seq)
+                # turn off MW via ASG
                 self.mw_control_seq([0, 0])
 
-                # --------------- 3.24 修改
+                # turn off MW directly
                 if self.mw_on_off:
                     self.mw.stop()
-                    time.sleep(0.1)
 
                 # reference data acquisition
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
@@ -622,6 +618,8 @@ class FrequencyDomainScheduler(Scheduler):
 
                 # recover the sequences
                 self.mw_control_seq(mw_on_seq)
+
+                tr.join()
 
         print('finished data acquisition')
 
@@ -648,12 +646,6 @@ class FrequencyDomainScheduler(Scheduler):
         """
         mw_seq_on = self.mw_control_seq()
         if mw_control == 'off':
-            # TODO: delete the following
-            # if self.mw_ttl == 0:
-            #     mw_off_seq = [self._asg_conf['t'] / C.nano, 0]
-            # else:
-            #     mw_off_seq = [0, self._asg_conf['t'] / C.nano]
-            # self.mw_control_seq(mw_off_seq)
             self.mw_control_seq([0, 0])
         elif mw_control == 'on':
             pass
@@ -733,10 +725,10 @@ class TimeDomainScheduler(Scheduler):
             self.asg.start()
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning time interval: {:.3f} ns'.format(duration))
-            # ----- 3.24 修改
+
+            # need to turn on MW again
             if self.mw_on_off:
                 self.mw.start()
-                time.sleep(0.1)
 
             # Signal readout
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
@@ -746,11 +738,12 @@ class TimeDomainScheduler(Scheduler):
 
             # Reference readout
             if self.with_ref:
+                # turn off MW via ASG
                 self.mw_control_seq([0, 0])
-                # ----- 3.24 修改
+
+                # turn off MW directly
                 if self.mw_on_off:
                     self.mw.stop()
-                    time.sleep(0.1)
 
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
                 time.sleep(self.time_pad)

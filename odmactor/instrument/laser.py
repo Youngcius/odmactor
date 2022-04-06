@@ -1,5 +1,6 @@
 class Laser(object):
     def __init__(self):
+        print('Laser initialized')
         pass
 
     def connect(self):

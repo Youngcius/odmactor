@@ -16,11 +16,11 @@ asg_data1=[
 ]
 """
 
-
 class ASG(ASG8005):
     def __init__(self):
         super(ASG, self).__init__()
         self.connect()
+
 
     def load_data(self, asg_data: List[List[Union[float, int]]]):
         """
@@ -37,7 +37,7 @@ class ASG(ASG8005):
         return super(ASG, self).checkdata(asg_data, [len(row) for row in asg_data])
 
     def connect(self):
-        super(ASG, self).connect()
+        return super(ASG, self).connect()
 
     def start(self, count=1):
         super(ASG, self).start()
