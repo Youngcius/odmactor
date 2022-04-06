@@ -19,7 +19,7 @@ class LockInAmplifier(instruments.srs.SR830):
 
         self.cache = []
 
-    def get_data_with_time(self, interval=1e-3, num=100):
+    def get_data_with_time(self, interval=1e-6, num=100):
         self.cache.clear()
         for _ in range(num):
             time.sleep(interval)
@@ -27,17 +27,57 @@ class LockInAmplifier(instruments.srs.SR830):
         return self.cache
 
 
-cache = deque()
+# ============================
+import asyncio
+import numpy as np
+from ipywidgets import Button
+import plotly.graph_objs as go
 
-fig, ax = plt.subplots()
-# The time vector is fixed. No need to read it on every iteration.
-x = np.array(hist.getIndex())
-line, = ax.plot(x, x * 0)
-ax.set_xlabel('Time (ps)')
-ax.set_ylabel('Counts')
-ax.set_title('Correlation histogram via Pyro-RPC')
-while hist.isRunning():
-    y = hist.getData()
-    line.set_ydata(y)
-    ax.set_ylim(np.min(y), np.max(y))
-    plt.pause(0.1)
+N = 1000
+lockin = LockInAmplifier()
+
+# create a figure widget and a plot
+fig_trace = go.FigureWidget()
+# fig_trace.add_scatter(x=trace.getIndex(), y=trace.getData()[0])
+fig_trace.add_scatter(x=range(N), y=lockin.get_data_with_time(num=N))
+
+
+async def update_trace():
+    """Update the plot every 0.1 s"""
+    while True:
+        # fig_trace.data[0].y = trace.getData()[0]
+        fig_trace.data[0].y = lockin.get_data_with_time(num=N)
+
+        await asyncio.sleep(0.1)
+
+
+# If this cell is re-excecuted and there was a previous task, stop it first to avoid a dead daemon
+try:
+    task_trace.cancel()
+except:
+    pass
+
+loop = asyncio.get_event_loop()
+task_trace = loop.create_task(update_trace())
+
+# create a stop button
+button_trace_stop = Button(description='stop')
+button_trace_stop.on_click(lambda a: task_trace.cancel())
+
+display(fig_trace, button_trace_stop)
+
+#
+# cache = deque()
+#
+# fig, ax = plt.subplots()
+# # The time vector is fixed. No need to read it on every iteration.
+# x = np.array(hist.getIndex())
+# line, = ax.plot(x, x * 0)
+# ax.set_xlabel('Time (ps)')
+# ax.set_ylabel('Counts')
+# ax.set_title('Correlation histogram via Pyro-RPC')
+# while hist.isRunning():
+#     y = hist.getData()
+#     line.set_ydata(y)
+#     ax.set_ylim(np.min(y), np.max(y))
+#     plt.pause(0.1)
