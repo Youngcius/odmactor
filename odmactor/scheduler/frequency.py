@@ -26,7 +26,7 @@ class CWScheduler(FrequencyDomainScheduler):
         super(CWScheduler, self).__init__(*args, **kwargs)
         self.name = 'CW ODMR Scheduler'
 
-    def configure_odmr_seq(self, t, N: int):
+    def configure_odmr_seq(self, period, N: int):
         """
         Wave form for single period:
             laser (no asg control sequence):
@@ -45,12 +45,18 @@ class CWScheduler(FrequencyDomainScheduler):
         :param t: binwidth parameter for TimeTagger.Counter
         :param N: n_values for TimeTagger.Counter
         """
-        cont_seq = [t, 0]
-        if self.mw_ttl == 0:
-            mw_seq = utils.flip_sequence(cont_seq)
+        if self.use_lockin:
+            mw_seq = [period, period]
+            cont_seq = [period * 2, 0]
+            self.download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, lockin_seq=mw_seq, N=N)
+
         else:
-            mw_seq = cont_seq
-        self.download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, tagger_seq=cont_seq, N=N)
+            cont_seq = [period, 0]
+            if self.mw_ttl == 0:
+                mw_seq = utils.flip_sequence(cont_seq)
+            else:
+                mw_seq = cont_seq
+            self.download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, tagger_seq=cont_seq, N=N)
 
     def run_single_step(self, power, freq, mw_control='on') -> List[float]:
         """

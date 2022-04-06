@@ -49,7 +49,7 @@ class Scheduler(abc.ABC):
 
         self.mw_exec_mode = ''
         self.mw_exec_modes_optional = {'scan-center-span', 'scan-start-stop'}
-        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5}
+        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5, 'lockin':8}
         self.tagger_input = {'apd': 1, 'asg': 2}
         self.counter: tt.IteratorBase = None
         self.daqtask: nidaqmx.Task = None
@@ -124,12 +124,13 @@ class Scheduler(abc.ABC):
                 self.tagger = tt.createTimeTagger()
 
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
-                               tagger_seq: List[int] = None, N: int = 100000):
+                               tagger_seq: List[int] = None, lockin_seq:List[int]=None, N: int = 100000):
         """
         Download control sequences into the memory of ASG
         :param laser_seq: laser control sequence
         :param mw_seq: MW control sequence
         :param tagger_seq: tagger readout control sequence
+        :param lockin_seq: lock-in amplifier control sequence
         :param N: repetition number of sequences periods for each detection point
         """
         sequences = [laser_seq, mw_seq, tagger_seq]
@@ -147,6 +148,7 @@ class Scheduler(abc.ABC):
         idx_laser_channel = self.channel['laser'] - 1
         idx_mw_channel = self.channel['mw'] - 1
         idx_tagger_channel = self.channel['tagger'] - 1
+        idx_lockin_channel = self.channel['lockin']-1
 
         self.reset_asg_sequence()
         if laser_seq is not None:
@@ -155,6 +157,8 @@ class Scheduler(abc.ABC):
             self._asg_sequences[idx_mw_channel] = mw_seq
         if tagger_seq is not None:
             self._asg_sequences[idx_tagger_channel] = tagger_seq
+        if lockin_seq is not None:
+            self._asg_sequences[idx_lockin_channel]= lockin_seq
 
         # connect & download pulse data
         self.asg.load_data(self._asg_sequences)
@@ -235,7 +239,6 @@ class Scheduler(abc.ABC):
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data.append(self.counter.getData().ravel().tolist())
-        print('signal readout finished')
 
     def _get_data_ref(self):
         if self.use_lockin:
@@ -251,7 +254,6 @@ class Scheduler(abc.ABC):
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data_ref.append(self.counter.getData().ravel().tolist())
-        print('reference readout finished')
 
     def run(self):
         """
