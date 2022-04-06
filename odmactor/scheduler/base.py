@@ -42,9 +42,8 @@ class Scheduler(abc.ABC):
         self._mw_conf = {'freq': C.giga, 'power': 0}  # current MW parameter settings
         self._configuration = {}
         self._laser_control = True
-        self.two_pulse_readout = False  # whether use double-pulse readout
+        self.two_pulse_readout = False  # whether to use double-pulse readout
         self._mw_instr = Microwave()  # 3.28 modified
-        # self._mw_instr = RsInstrument('USB0::0x0AAD::0x0054::104174::INSTR', True, True)
         self._asg = ASG()
         self.mw_exec_mode = ''
         self.mw_exec_modes_optional = {'scan-center-span', 'scan-start-stop'}
@@ -52,6 +51,7 @@ class Scheduler(abc.ABC):
         self.tagger_input = {'apd': 1, 'asg': 2}
         self.tagger = tt.createTimeTagger()
         self.counter: tt.IteratorBase = None
+
         # properties or method for debugging
         self.sync_delay = 0.0
         self.mw_dwell = 0.0
@@ -62,36 +62,22 @@ class Scheduler(abc.ABC):
         if not os.path.exists(self.output_dir):
             os.mkdir(self.output_dir)
 
-        if 'mw_ttl' in kwargs.keys():
-            self.mw_ttl = kwargs['mw_ttl']  # 1: high-level effective; 0: low level effective
-        else:
-            self.mw_ttl = 1  # default: high-level effective
+        # 1: high-level effective; 0: low level effective
+        kwargs.setdefault('laser_ttl', 1)
+        kwargs.setdefault('mw_ttl', 1)
+        kwargs.setdefault('apd_ttl', 1)
+        kwargs.setdefault('tagger_ttl', 1)
 
-        if 'with_ref' in kwargs.keys():
-            self.with_ref = kwargs['with_ref']
-        else:
-            self.with_ref = False
+        self.laser_ttl = kwargs['laser_ttl']
+        self.mw_ttl = kwargs['mw_ttl']
+        self.apd_ttl = kwargs['apd_ttl']
+        self.tagger_ttl = kwargs['tagger_ttl']
 
-        if 'epoch_omit' in kwargs.keys():
-            self.epoch_omit = kwargs['epoch_omit']
-        else:
-            self.epoch_omit = 0
+        kwargs.setdefault('with_ref', True)
+        self.with_ref = kwargs['with_ref']
 
-        if 'mw_on_off' in kwargs.keys():
-            self.mw_on_off = kwargs['mw_on_off']
-        else:
-            self.mw_on_off = False  # if True, on/off MW when using ASG control
-
-    # def asg_connect_and_download_data(self, asg_data: List[List[float]]):
-    #     """
-    #     Connect ASG and download designed sequences data into it
-    #     :param asg_data: a List[List[float]] data type representing
-    #     """
-    #     is_connected = self._asg.connect()  # auto stop
-    #     if is_connected == 1:
-    #         self._asg.download_ASG_pulse_data(asg_data, [len(row) for row in asg_data])
-    #     else:
-    #         raise ConnectionError('ASG not connected')
+        kwargs.setdefault('epoch_omit', 0)
+        self.epoch_omit = kwargs['epoch_omit']
 
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
                                tagger_seq: List[int] = None, N: int = 100000):
