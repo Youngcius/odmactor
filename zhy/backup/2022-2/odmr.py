@@ -61,11 +61,11 @@ class ODMRScheduler(Scheduler):
         Scanning frequencies & getting data of Counter
         """
         for i, freq in enumerate(self._freqs):
-            self._mw_instr.write_float('FREQUENCY', freq)
+            self.mw.write_float('FREQUENCY', freq)
             print('scanning freq {:.4f} GHz'.format(freq / C.giga))
             #################################
             # 1. MW on
-            self._mw_instr.write_bool('OUTPUT:STATE', True)
+            self.mw.write_bool('OUTPUT:STATE', True)
             # print('MW on/off status:', self._mw_instr.instrument_status_checking)
 
             t = threading.Thread(target=self._get_data, name='thread-on-{}'.format(i))
@@ -75,7 +75,7 @@ class ODMRScheduler(Scheduler):
             time.sleep(self.time_pad)
 
             # 2. MW off
-            self._mw_instr.write_bool('OUTPUT:STATE', False)
+            self.mw.write_bool('OUTPUT:STATE', False)
             # print('MW on/off status:', self._mw_instr.instrument_status_checking)
             t = threading.Thread(target=self._get_data_ref, name='thread-off-{}'.format(i))
             time.sleep(self.time_pad)
@@ -105,7 +105,7 @@ class ODMRScheduler(Scheduler):
         :param with_ref: if True, detect both signals and reference signals in two sequent asg_dwell periods
         """
         for i, freq in enumerate(self._freqs):
-            self._mw_instr.write_float('FREQUENCY', freq)
+            self.mw.write_float('FREQUENCY', freq)
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
@@ -251,7 +251,7 @@ class CWScheduler(ODMRScheduler):
             self.mw_off_seq()  # auto-start ASG in this function
         else:
             raise ValueError('unsupported mw_control parameter')
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
+        self.mw.write_bool('OUTPUT:STATE', True)
 
         time.sleep(0.5)  # 先让激光和微波开几秒
 
@@ -333,7 +333,7 @@ class CWScheduler(ODMRScheduler):
         for freq in self._freqs:
             print('scanning freq {:.4f} GHz'.format(freq / C.giga))
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
-            self._mw_instr.write_float('FREQUENCY', freq)
+            self.mw.write_float('FREQUENCY', freq)
             time.sleep(0.2)
 
             # self.laser_on_seq(t / C.nano)
@@ -517,7 +517,7 @@ class PulseScheduler(ODMRScheduler):
             self.mw_off_seq()  # auto-start ASG in this function
         else:
             raise ValueError('unsupported mw_control parameter')
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
+        self.mw.write_bool('OUTPUT:STATE', True)
 
         time.sleep(0.5)  # 先让激光和微波开几秒
 

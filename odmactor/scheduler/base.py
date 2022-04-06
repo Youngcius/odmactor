@@ -13,7 +13,7 @@ import threading
 import numpy as np
 import scipy.constants as C
 import TimeTagger as tt
-from odmactor.instrument import ASG, Microwave
+from odmactor.instrument import ASG, Microwave, Laser, LockInAmplifier
 from odmactor.utils import dBm_to_mW, mW_to_dBm
 from typing import List, Any, Optional
 from odmactor.utils.sequence import seq_to_str, seq_to_fig
@@ -43,13 +43,13 @@ class Scheduler(abc.ABC):
         self._configuration = {}
         self._laser_control = True
         self.two_pulse_readout = False  # whether to use double-pulse readout
-        self._mw_instr = Microwave()  # 3.28 modified
-        self._asg = ASG()
+
+        # connect to Laser, MW, ASG, Tagger/Lockin
+
         self.mw_exec_mode = ''
         self.mw_exec_modes_optional = {'scan-center-span', 'scan-start-stop'}
         self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5}
         self.tagger_input = {'apd': 1, 'asg': 2}
-        self.tagger = tt.createTimeTagger()
         self.counter: tt.IteratorBase = None
 
         # properties or method for debugging
@@ -78,6 +78,44 @@ class Scheduler(abc.ABC):
 
         kwargs.setdefault('epoch_omit', 0)
         self.epoch_omit = kwargs['epoch_omit']
+
+        # with lockin or tagger
+        kwargs.setdefault('with_lockin', False)
+        self.with_lockin = kwargs['with_lockin']
+
+        # initialize instruments
+        self.laser = Laser()
+        self.asg = ASG()
+        try:
+            self.mw = Microwave()
+        except:
+            self.mw = None
+
+        if self.with_lockin:
+            try:
+                self.lockin = LockInAmplifier()
+            except:
+                self.lockin = None
+        else:
+            if tt.scanTimeTagger():
+                self.tagger = tt.createTimeTagger()
+            else:
+                self.tagger = None
+
+    def reconnect(self):
+        self.laser.connect()
+        self.asg.connect()
+
+        if self.mw is not None:
+            self.mw.connect()
+
+        if self.with_lockin:
+            self.lockin = LockInAmplifier()
+        else:
+            try:
+                self.tagger.getSerial()
+            except:
+                self.tagger = tt.createTimeTagger()
 
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
                                tagger_seq: List[int] = None, N: int = 100000):
@@ -113,8 +151,18 @@ class Scheduler(abc.ABC):
             self._asg_sequences[idx_tagger_channel] = tagger_seq
 
         # connect & download pulse data
-        self._asg.load_data(self._asg_sequences)
-        # self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
+
+    def configure_lockin_counting(self, ):
+        """
+
+        :param apd_channel:
+        :param asg_channel:
+        :return:
+        """
+        self.lockin = LockInAmplifier(N=self._asg_conf['N'])
+        # 不需要设置lockin的channel
+        pass
 
     def configure_tagger_counting(self, apd_channel: int = None, asg_channel: int = None, reader: str = 'counter'):
         """
@@ -155,26 +203,45 @@ class Scheduler(abc.ABC):
         """
         Start device: MW, ASG; Execute Measurement instance.
         """
+
         # 1. run ASG firstly
         self._data.clear()
         self._data_ref.clear()
-        self._asg.start()
+        self.asg.start()
 
-        # 2. restart self.counter if necessary
+        # 2. restart self.counter or self.lockin if necessary
         if not self.counter.isRunning():
             self.counter.start()
 
         # 3. run MW then
-        self._mw_instr.start()
-        print('MW on/off status:', self._mw_instr.instrument_status_checking)
+        self.mw.start()
+        print('MW on/off status:', self.mw.instrument_status_checking)
 
     def _get_data(self):
-        self._data.append(self.counter.getData().ravel().tolist())
-        self.counter.clear()
+        if self.with_lockin:
+            # from lockin
+            tmp = []
+            for _ in range(self._asg_conf['N']):
+                time.sleep(self._asg_conf['t'])
+                tmp.append(self.lockin.magnitude)
+            self._data.append(tmp)
+        else:
+            # from tagger
+            self._data.append(self.counter.getData().ravel().tolist())
+            self.counter.clear()
 
     def _get_data_ref(self):
-        self._data_ref.append(self.counter.getData().ravel().tolist())
-        self.counter.clear()
+        if self.with_lockin:
+            # from lockin
+            tmp = []
+            for _ in range(self._asg_conf['N']):
+                time.sleep(self._asg_conf['t'])
+                tmp.append(self.lockin.magnitude)
+            self._data_ref.append(tmp)
+        else:
+            # from tagger
+            self._data_ref.append(self.counter.getData().ravel().tolist())
+            self.counter.clear()
 
     def run(self):
         """
@@ -191,16 +258,16 @@ class Scheduler(abc.ABC):
         Stop hardware (ASG, MW, Tagger) scheduling
         """
         self.counter.stop()
-        self._asg.stop()
-        self._mw_instr.stop()
+        self.asg.stop()
+        self.mw.stop()
         print('Stopped: Scheduling process has stopped')
 
     def close(self):
         """
         Release instrument (ASG, MW, Tagger) resources
         """
-        self._asg.close()
-        self._mw_instr.close()
+        self.asg.close()
+        self.mw.close()
         tt.freeTimeTagger(self.tagger)
         print('Closed: All instrument resources has been released')
 
@@ -213,14 +280,14 @@ class Scheduler(abc.ABC):
         """
         if power is not None:
             self._mw_conf['power'] = power
-            self._mw_instr.set_power(power)
+            self.mw.set_power(power)
             if regulate_pi:  # regulate time duration based on MW power
                 self._regulate_pi_pulse(power=power)  # by power
         if freq is not None:
             self._mw_conf['freq'] = freq
-            self._mw_instr.set_frequency(freq)
+            self.mw.set_frequency(freq)
 
-        self._mw_instr.start()
+        self.mw.start()
 
     def _regulate_pi_pulse(self, power: float = None, time: float = None):
         """
@@ -267,7 +334,7 @@ class Scheduler(abc.ABC):
         idx_laser_channel = self.channel['laser'] - 1
         t = sum(self._asg_sequences[idx_laser_channel])
         self._asg_sequences[idx_laser_channel] = [t, 0]
-        self._asg.load_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         self.asg.start()
 
     def laser_off_seq(self):
@@ -276,7 +343,7 @@ class Scheduler(abc.ABC):
         """
         idx_laser_channel = self.channel['laser'] - 1
         self._asg_sequences[idx_laser_channel] = [0, 0]
-        self._asg.load_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         # self.asg_connect_and_download_data(self._asg_sequences)
         self.asg.start()
 
@@ -291,7 +358,7 @@ class Scheduler(abc.ABC):
         else:
             mw_seq = [t, 0]
         self._asg_sequences[idx_mw_channel] = mw_seq
-        self._asg.load_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         # self.asg_connect_and_download_data(self._asg_sequences)
         self.asg.start()
 
@@ -302,7 +369,7 @@ class Scheduler(abc.ABC):
         mw_seq = [0, 0]
         idx_mw_channel = self.channel['mw'] - 1
         self._asg_sequences[idx_mw_channel] = mw_seq
-        self._asg.load_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         # self.asg_connect_and_download_data(self._asg_sequences)
         self.asg.start()
 
@@ -317,9 +384,9 @@ class Scheduler(abc.ABC):
             return self._asg_sequences[idx_mw_channel]
         else:
             self._asg_sequences[idx_mw_channel] = mw_seq
-            self._asg.load_data(self._asg_sequences)
+            self.asg.load_data(self._asg_sequences)
             # self.asg_connect_and_download_data(self._asg_sequences)
-            self._asg.start()
+            self.asg.start()
 
     def _conf_time_paras(self, t, N):
         """
@@ -446,15 +513,15 @@ class Scheduler(abc.ABC):
 
     @property
     def mw_instr(self):
-        return self._mw_instr
+        return self.mw
 
     @mw_instr.setter
     def mw_instr(self, value: Microwave):
-        self._mw_instr = value
+        self.mw = value
 
     @property
     def asg(self):
-        return self._asg
+        return self.asg
 
     @asg.setter
     def asg(self, value: ASG):
@@ -509,7 +576,7 @@ class FrequencyDomainScheduler(Scheduler):
         """
         # ===================================================================
         for _ in range(self.epoch_omit):
-            self._mw_instr.set_frequency(self._freqs[0])
+            self.mw.set_frequency(self._freqs[0])
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} GHz (trivial)'.format(self._freqs[0] / C.giga))
             time.sleep(self.time_pad + self.asg_dwell)
@@ -521,9 +588,9 @@ class FrequencyDomainScheduler(Scheduler):
 
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
         for i, freq in enumerate(self._freqs):
-            self._mw_instr.set_frequency(freq)
+            self.mw.set_frequency(freq)
             if self.mw_on_off:
-                self._mw_instr.start()  # 3.24 修改
+                self.mw.start()  # 3.24 修改
                 time.sleep(0.1)
 
             print('scanning freq {:.3f} GHz'.format(freq / C.giga))
@@ -544,7 +611,7 @@ class FrequencyDomainScheduler(Scheduler):
 
                 # --------------- 3.24 修改
                 if self.mw_on_off:
-                    self._mw_instr.stop()
+                    self.mw.stop()
                     time.sleep(0.1)
 
                 # reference data acquisition
@@ -653,7 +720,7 @@ class TimeDomainScheduler(Scheduler):
             print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
 
             self._gene_detect_seq(self._times[0])
-            self._asg.start()
+            self.asg.start()
             time.sleep(self.time_pad + self.asg_dwell)
 
             if self.with_ref:
@@ -663,12 +730,12 @@ class TimeDomainScheduler(Scheduler):
         # =======================================================
         for i, duration in enumerate(self._times):
             self._gene_detect_seq(duration)
-            self._asg.start()
+            self.asg.start()
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning time interval: {:.3f} ns'.format(duration))
             # ----- 3.24 修改
             if self.mw_on_off:
-                self._mw_instr.start()
+                self.mw.start()
                 time.sleep(0.1)
 
             # Signal readout
@@ -682,7 +749,7 @@ class TimeDomainScheduler(Scheduler):
                 self.mw_control_seq([0, 0])
                 # ----- 3.24 修改
                 if self.mw_on_off:
-                    self._mw_instr.stop()
+                    self.mw.stop()
                     time.sleep(0.1)
 
                 tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))

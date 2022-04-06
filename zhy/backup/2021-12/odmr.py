@@ -25,27 +25,27 @@ class ODMRScheduler(Scheduler):
     def _start_device(self):
         # 1. run ASG firstly
         self._data.clear()
-        self._asg.start()
+        self.asg.start()
 
         # restart self.counter if necessary
         if not self.counter.isRunning():
             self.counter.start()
 
         # 2. run MW then
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
+        self.mw.write_bool('OUTPUT:STATE', True)
         # if self.mw_exec_mode == 'scan-center-span' or self.mw_exec_mode == 'scan-start-stop':
         #     self._mw_instr.write_str('SWE:FREQ:EXEC')  # trigger the sweep
         #     raise warnings.warn('Using the SWEEP mode of MW', DeprecationWarning)
         #       self._mw_instr.write_str('SOUR:PULM:TRIG:MODE SING')
         #       self._mw_instr.write_str('SOUR:PULM:TRIG:IMM')
-        print('MW on/off status:', self._mw_instr.instrument_status_checking)
+        print('MW on/off status:', self.mw.instrument_status_checking)
 
     def _scan_freqs_and_get_data(self):
         """
         Sanning frequencies & getting data of Counter
         """
         for i, freq in enumerate(self._freqs):
-            self._mw_instr.write_float('FREQUENCY', freq)
+            self.mw.write_float('FREQUENCY', freq)
             print('scanning freq {:.4f} GHz'.format(freq / C.giga))
             t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
             time.sleep(self.time_pad)
@@ -276,7 +276,7 @@ class CWScheduler(ODMRScheduler):
         for freq in self._freqs:
             print('scanning freq {:.4f} GHz'.format(freq / C.giga))
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
-            self._mw_instr.write_float('FREQUENCY', freq)
+            self.mw.write_float('FREQUENCY', freq)
             time.sleep(0.2)
 
             # self.laser_on_seq(t / C.nano)
