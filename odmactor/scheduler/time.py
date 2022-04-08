@@ -29,7 +29,7 @@ class RamseyScheduler(TimeDomainScheduler):
         super(RamseyScheduler, self).__init__(*args, **kwargs)
         self.name = 'Ramsey Scheduler'
 
-    def _gene_detect_seq(self, t_free):
+    def gene_detect_seq(self, t_free):
         """
         Generate Ramsey sequences and download it to ASG
         :param t_free: free precession time (time duration between two MW pulse)
@@ -61,7 +61,9 @@ class RamseyScheduler(TimeDomainScheduler):
         if self.mw_ttl == 0:
             mw_seq = utils.flip_sequence(mw_seq)
 
-        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N=N)
+        self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
+
+
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_mw_read=200,
                            inter_readout=200, pre_read=50, inter_period=200, N: int = 1000):
@@ -117,7 +119,7 @@ class RabiScheduler(TimeDomainScheduler):
         super(RabiScheduler, self).__init__(*args, **kwargs)
         self.name = 'Rabi Scheduler'
 
-    def _gene_detect_seq(self, t_mw):
+    def gene_detect_seq(self, t_mw):
         """
         Generate Rabi detecting sequences and download it to ASG
         :param t_mw: free precession time (time duration between two MW pulse)
@@ -145,7 +147,8 @@ class RabiScheduler(TimeDomainScheduler):
         if self.mw_ttl == 0:
             mw_seq = utils.flip_sequence(mw_seq)
 
-        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N=N)
+        self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
+
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_mw_read=100,
                            pre_read=200, inter_readout=200, inter_period=200, N: int = 1000):
@@ -203,7 +206,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         else:
             self.ms = 1
 
-    def _gene_detect_seq(self, t_free):
+    def gene_detect_seq(self, t_free):
         """
         Generate T1 Relaxation detecting sequences and download it to ASG
         :param t_free: free precession time (time duration of after MW pi pulse)
@@ -241,7 +244,8 @@ class RelaxationScheduler(TimeDomainScheduler):
         if self.mw_ttl == 0:
             mw_seq = utils.flip_sequence(mw_seq)
 
-        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N=N)
+        self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
+
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=10000, inter_readout=200,
                            pre_read=50, inter_period=200, N: int = 10000):
@@ -298,7 +302,7 @@ class HahnEchoScheduler(TimeDomainScheduler):
         super(HahnEchoScheduler, self).__init__(*args, **kwargs)
         self.name = 'Hahn Echo Scheduler'
 
-    def _gene_detect_seq(self, t_free):
+    def gene_detect_seq(self, t_free):
         """
         Generate Hahn Echo sequences and download it to ASG
         :param t_free: free precession time between neighbor the MW pi pulse and pi/2 pulse
@@ -349,7 +353,8 @@ class HahnEchoScheduler(TimeDomainScheduler):
         if self.mw_ttl == 0:
             mw_seq = utils.flip_sequence(mw_seq)
 
-        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N=N)
+        self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
+
 
     def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
                            inter_readout=200, inter_period=200, N: int = 100000):
@@ -405,7 +410,7 @@ class HighDecouplingScheduler(TimeDomainScheduler):
         super(HighDecouplingScheduler, self).__init__(*args, **kwargs)
         self.name = 'High-order Dynamical Decoupling Scheduler'
 
-    def _gene_detect_seq(self, t_free):
+    def gene_detect_seq(self, t_free):
         pass
 
     # def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=3e3, inter_mw_read=200, pre_read=50,

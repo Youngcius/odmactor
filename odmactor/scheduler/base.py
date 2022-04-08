@@ -35,8 +35,10 @@ class Scheduler(abc.ABC):
         self.pi_pulse = {'freq': None, 'power': None, 'time': None}  # unit: Hz, dBm, s
         self._result = []
         self._result_detail = {}
-        self._freqs = []
-        self._times = []
+        self._freqs = []  # unit: Hz
+        self._times = []  # unit: ns
+        self._cur_freq = C.giga
+        self._cur_time = 0
         self._asg_sequences = []
         self.reset_asg_sequence()
         self._asg_conf = {'t': 0, 'N': 0}  # to calculate self.asg_dwell = N * t
@@ -122,6 +124,16 @@ class Scheduler(abc.ABC):
                 self.tagger.getSerial()
             except:
                 self.tagger = tt.createTimeTagger()
+
+    def set_asg_sequences_ttl(self, laser_ttl=None, mw_ttl=None, apd_ttl=None, tagger_ttl=None):
+        if laser_ttl is not None:
+            self.laser_ttl = laser_ttl
+        if mw_ttl is not None:
+            self.mw_ttl = mw_ttl
+        if apd_ttl is not None:
+            self.apd_ttl = apd_ttl
+        if tagger_ttl is not None:
+            self.tagger_ttl = tagger_ttl
 
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
                                tagger_seq: List[int] = None, lockin_seq: List[int] = None, N: int = 100000):
@@ -499,6 +511,26 @@ class Scheduler(abc.ABC):
     def __str__(self):
         return self.name
 
+    @property
+    def sequences(self):
+        return self._asg_sequences
+
+    @property
+    def frequencies(self):
+        return self._freqs
+
+    @property
+    def times(self):
+        return self._times
+
+    @property
+    def cur_freq(self):
+        return self._cur_freq
+
+    @property
+    def cur_time(self):
+        return self._cur_time
+
     @abc.abstractmethod
     def configure_odmr_seq(self, *args, **kwargs):
         """
@@ -600,6 +632,7 @@ class FrequencyDomainScheduler(Scheduler):
 
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
         for i, freq in enumerate(self._freqs):
+            self._cur_freq = freq
             self.mw.set_frequency(freq)
 
             # need to turn on MW again
@@ -724,7 +757,7 @@ class TimeDomainScheduler(Scheduler):
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
 
-            self._gene_detect_seq(self._times[0])
+            self.gene_detect_seq(self._times[0])
             self.asg.start()
             time.sleep(self.time_pad + self.asg_dwell)
 
@@ -734,7 +767,8 @@ class TimeDomainScheduler(Scheduler):
 
         # =======================================================
         for i, duration in enumerate(self._times):
-            self._gene_detect_seq(duration)
+            self._cur_time = duration
+            self.gene_detect_seq(duration)
             self.asg.start()
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
             print('scanning time interval: {:.3f} ns'.format(duration))
@@ -795,16 +829,16 @@ class TimeDomainScheduler(Scheduler):
         self._acquire_data()  # scanning time intervals in this loop
         self.stop()
 
-    def _gene_pseudo_detect_seq(self):
+    def gene_pseudo_detect_seq(self):
         """
         Generate pseudo pulses for visualization and regulation
         """
         ts = list(self._cache.values())[:-1]
         t_sum = sum([t for t in ts if t is not None])
-        self._gene_detect_seq(int(t_sum / 40) * 10)
+        self.gene_detect_seq(int(t_sum / 40) * 10)
 
     @abc.abstractmethod
-    def _gene_detect_seq(self, *args, **kwargs):
+    def gene_detect_seq(self, *args, **kwargs):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -820,7 +854,7 @@ class TimeDomainScheduler(Scheduler):
         print('running with time = {:.3f} ns, MW power = {:.2f} dBm ...'.format(self.asg_dwell, self._mw_conf['power']))
 
         # generate ASG sequences
-        self._gene_detect_seq(t_free)
+        self.gene_detect_seq(t_free)
 
         # start sequence for time: N * t
         self._start_device()

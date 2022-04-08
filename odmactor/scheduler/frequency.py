@@ -42,7 +42,7 @@ class CWScheduler(FrequencyDomainScheduler):
             |                               |
             |                               |
         All units for the parameters is 'ns'
-        :param t: binwidth parameter for TimeTagger.Counter
+        :param period: binwidth parameter for TimeTagger.Counter
         :param N: n_values for TimeTagger.Counter
         """
         if self.use_lockin:
