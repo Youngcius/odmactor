@@ -133,7 +133,7 @@ class Scheduler(abc.ABC):
         :param lockin_seq: lock-in amplifier control sequence
         :param N: repetition number of sequences periods for each detection point
         """
-        sequences = [laser_seq, mw_seq, tagger_seq]
+        sequences = [laser_seq, mw_seq, tagger_seq, lockin_seq]
         if not any(sequences):
             raise ValueError('laser_seq, mw_seq and tagger_seq cannot be all None')
         sequences = [seq for seq in sequences if seq is not None]  # non-None sequences

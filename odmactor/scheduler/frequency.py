@@ -154,7 +154,8 @@ class PulseScheduler(FrequencyDomainScheduler):
             #     # low-level effective
             mw_seq = utils.flip_sequence(mw_seq)
 
-        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N=N)
+        self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
+
 
     def run_single_step(self, freq, power=None, mw_control='on') -> List[float]:
         """
