@@ -49,7 +49,7 @@ class Scheduler(abc.ABC):
 
         self.mw_exec_mode = ''
         self.mw_exec_modes_optional = {'scan-center-span', 'scan-start-stop'}
-        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5, 'lockin':8}
+        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5, 'lockin': 8}
         self.tagger_input = {'apd': 1, 'asg': 2}
         self.counter: tt.IteratorBase = None
         self.daqtask: nidaqmx.Task = None
@@ -124,7 +124,7 @@ class Scheduler(abc.ABC):
                 self.tagger = tt.createTimeTagger()
 
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
-                               tagger_seq: List[int] = None, lockin_seq:List[int]=None, N: int = 100000):
+                               tagger_seq: List[int] = None, lockin_seq: List[int] = None, N: int = 100000):
         """
         Download control sequences into the memory of ASG
         :param laser_seq: laser control sequence
@@ -148,7 +148,7 @@ class Scheduler(abc.ABC):
         idx_laser_channel = self.channel['laser'] - 1
         idx_mw_channel = self.channel['mw'] - 1
         idx_tagger_channel = self.channel['tagger'] - 1
-        idx_lockin_channel = self.channel['lockin']-1
+        idx_lockin_channel = self.channel['lockin'] - 1
 
         self.reset_asg_sequence()
         if laser_seq is not None:
@@ -158,7 +158,7 @@ class Scheduler(abc.ABC):
         if tagger_seq is not None:
             self._asg_sequences[idx_tagger_channel] = tagger_seq
         if lockin_seq is not None:
-            self._asg_sequences[idx_lockin_channel]= lockin_seq
+            self._asg_sequences[idx_lockin_channel] = lockin_seq
 
         # connect & download pulse data
         self.asg.load_data(self._asg_sequences)
