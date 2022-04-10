@@ -105,13 +105,12 @@ The most important instrument to synchronize control measurement processes.
 
 - Vendor: [CIQTEK](https://www.ciqtek.com/)
 - Type: ASG8005
-- Output: 8 control channels
+- Feature: 8 control channels
 
 **Microwave instrument (MW)**
 
--
-Vendor: [SMB 100A](https://www.rohde-schwarz.com/us/products/test-and-measurement/analog-signal-generators/rs-smb100a-microwave-signal-generator_63493-9379.html)
-- Type: R&S
+- Vendor: [R&S](https://www.rohde-schwarz.com)
+- Type: [SMB 100A](https://www.rohde-schwarz.com/us/products/test-and-measurement/analog-signal-generators/rs-smb100a-microwave-signal-generator_63493-9379.html)
 
 **Time Tagger (Tagger)**
 
@@ -119,6 +118,7 @@ This is a T/D convertor as well as A/D convertor necessary for data acquisition.
 
 - Vendor: [Swabian](https://www.swabianinstruments.com/)
 - Type: Time Tagger 20
+- Feature: 8 detecting channels
 
 ## Implementation method
 
@@ -192,7 +192,3 @@ more people can use or modify it. If you have more ideas or suggestions, welcome
 
 Odmactor uses [The MIT license](LICENSE).
 
-## Reference
-
-1. https://www.degruyter.com/document/doi/10.1515/nanoph-2019-0209/html
-2. https://zhuanlan.zhihu.com/p/361148655
