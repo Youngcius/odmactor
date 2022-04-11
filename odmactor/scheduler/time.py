@@ -36,7 +36,7 @@ class RamseyScheduler(TimeDomainScheduler):
         """
         t_init, t_mw = self._cache['t_init'], self._cache['t_mw']
         inter_init_mw, inter_mw_read = self._cache['inter_init_mw'], self._cache['inter_mw_read']
-        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
+        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_sig']
         inter_readout, pre_read = self._cache['inter_readout'], self._cache['pre_read']
         inter_period = self._cache['inter_period']
         N = self._cache['N']
@@ -65,7 +65,7 @@ class RamseyScheduler(TimeDomainScheduler):
 
 
 
-    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_mw_read=200,
+    def configure_odmr_seq(self, t_init, t_read_sig,  inter_init_mw=1000, inter_mw_read=200,
                            inter_readout=200, pre_read=50, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
@@ -84,7 +84,7 @@ class RamseyScheduler(TimeDomainScheduler):
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
-        :param t_read_ref: time span for reference signal readout
+                            while t_read_ref is designed as the same value of t_read_sign if with_ref is True
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
         :param inter_mw_read: time interval between MW operation and readout laser pulses
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
@@ -97,7 +97,6 @@ class RamseyScheduler(TimeDomainScheduler):
             't_init': t_init,
             't_mw': t_mw,
             't_read_sig': t_read_sig,
-            't_read_ref': t_read_ref,
             'inter_init_mw': inter_init_mw,
             'inter_mw_read': inter_mw_read,
             'inter_readout': inter_readout,
@@ -106,7 +105,7 @@ class RamseyScheduler(TimeDomainScheduler):
             'N': N,
         }
         self._asg_conf['N'] = N
-        if t_read_ref is not None:
+        if self.with_ref:
             self.two_pulse_readout = True
 
 
@@ -125,7 +124,7 @@ class RabiScheduler(TimeDomainScheduler):
         :param t_mw: free precession time (time duration between two MW pulse)
         """
         t_init, inter_init_mw = self._cache['t_init'], self._cache['inter_init_mw']
-        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
+        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_sig']
         inter_readout, inter_period = self._cache['inter_readout'], self._cache['inter_period']
         inter_mw_read, pre_read = self._cache['inter_mw_read'], self._cache['pre_read']
         N = self._cache['N']
@@ -150,7 +149,7 @@ class RabiScheduler(TimeDomainScheduler):
         self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
 
 
-    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=1000, inter_mw_read=100,
+    def configure_odmr_seq(self, t_init, t_read_sig,  inter_init_mw=1000, inter_mw_read=100,
                            pre_read=200, inter_readout=200, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
@@ -169,7 +168,7 @@ class RabiScheduler(TimeDomainScheduler):
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
-        :param t_read_ref: time span for reference signal readout
+                            while t_read_ref is designed as the same value of t_read_sign if with_ref is True
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
         :param inter_mw_read: time interval between MW operation and readout laser pulses
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
@@ -180,7 +179,6 @@ class RabiScheduler(TimeDomainScheduler):
         self._cache = {
             't_init': t_init,
             't_read_sig': t_read_sig,
-            't_read_ref': t_read_ref,
             'inter_init_mw': inter_init_mw,
             'inter_mw_read': inter_mw_read,
             'pre_read': pre_read,
@@ -189,7 +187,7 @@ class RabiScheduler(TimeDomainScheduler):
             'N': N,
         }
         self._asg_conf['N'] = N
-        if t_read_ref is not None:
+        if self.with_ref:
             self.two_pulse_readout = True
 
 
@@ -213,7 +211,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         """
         t_init, t_mw = self._cache['t_init'], self._cache['t_mw']
         inter_init_mw, pre_read = self._cache['inter_init_mw'], self._cache['pre_read']
-        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
+        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_sig']
         inter_readout, inter_period = self._cache['inter_readout'], self._cache['inter_period']
         N = self._cache['N']
 
@@ -247,7 +245,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
 
 
-    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=10000, inter_readout=200,
+    def configure_odmr_seq(self, t_init, t_read_sig,  inter_init_mw=10000, inter_readout=200,
                            pre_read=50, inter_period=200, N: int = 10000):
         """
         Wave form for single period:
@@ -269,7 +267,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
-        :param t_read_ref: time span for reference signal readout
+                            while t_read_ref is designed as the same value of t_read_sign if with_ref is True
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
         :param inter_readout: time span for interval
@@ -281,7 +279,6 @@ class RelaxationScheduler(TimeDomainScheduler):
             't_init': t_init,
             't_mw': t_mw,
             't_read_sig': t_read_sig,
-            't_read_ref': t_read_ref,
             'inter_init_mw': inter_init_mw,
             'pre_read': pre_read,
             'inter_readout': inter_readout,
@@ -289,7 +286,7 @@ class RelaxationScheduler(TimeDomainScheduler):
             'N': N,
         }
         self._asg_conf['N'] = N
-        if t_read_ref is not None:
+        if self.with_ref:
             self.two_pulse_readout = True
 
 
@@ -309,7 +306,7 @@ class HahnEchoScheduler(TimeDomainScheduler):
         """
         t_init, t_mw_half_pi = self._cache['t_init'], self._cache['t_mw_half_pi']
         inter_init_mw, inter_mw_read = self._cache['inter_init_mw'], self._cache['inter_mw_read']
-        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_ref']
+        t_read_sig, t_read_ref = self._cache['t_read_sig'], self._cache['t_read_sig']
         pre_read = self._cache['pre_read']
         inter_readout, inter_period = self._cache['inter_period'], self._cache['inter_readout']
         N = self._cache['N']
@@ -356,7 +353,7 @@ class HahnEchoScheduler(TimeDomainScheduler):
         self.download_asg_sequences(laser_seq=laser_seq, mw_seq=mw_seq, tagger_seq=tagger_seq, N=N)
 
 
-    def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
+    def configure_odmr_seq(self, t_init, t_read_sig,  inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
                            inter_readout=200, inter_period=200, N: int = 100000):
         """
         Wave form for single period:
@@ -375,7 +372,7 @@ class HahnEchoScheduler(TimeDomainScheduler):
         All units for the parameters is 'ns'
         :param t_init: time for laser initialization
         :param t_read_sig: time span for fluorescence signal readout
-        :param t_read_ref: time span for reference signal readout
+                            while t_read_ref is designed as the same value of t_read_sign if with_ref is True
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 1000
         :param inter_mw_read: time interval between MW operation and readout laser pulses
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
@@ -388,7 +385,6 @@ class HahnEchoScheduler(TimeDomainScheduler):
             't_init': t_init,
             't_mw_half_pi': t_mw_half_pi,
             't_read_sig': t_read_sig,
-            't_read_ref': t_read_ref,
             'inter_init_mw': inter_init_mw,
             'inter_mw_read': inter_mw_read,
             'pre_read': pre_read,
@@ -397,7 +393,7 @@ class HahnEchoScheduler(TimeDomainScheduler):
             'N': N,
         }
         self._asg_conf['N'] = N
-        if t_read_ref is not None:
+        if self.with_ref:
             self.two_pulse_readout = True
 
 
@@ -413,7 +409,7 @@ class HighDecouplingScheduler(TimeDomainScheduler):
     def gene_detect_seq(self, t_free):
         pass
 
-    # def configure_odmr_seq(self, t_init, t_read_sig, t_read_ref=None, inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
+    # def configure_odmr_seq(self, t_init, t_read_sig,  inter_init_mw=3e3, inter_mw_read=200, pre_read=50,
     #                        inter_readout=200, inter_period=200, N: int = 100000):
     def configure_odmr_seq(self, *args, **kwargs):
         pass
