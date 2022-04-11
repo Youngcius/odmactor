@@ -239,12 +239,14 @@ class Scheduler(abc.ABC):
 
     def _get_data(self):
         if self.use_lockin:
+            time.sleep(self.asg_dwell)
+            self._data.append(self.daqtask.read(number_of_samples_per_channel=100))
             # from lockin
-            tmp = []
-            for _ in range(self._asg_conf['N']):
-                time.sleep(self._asg_conf['t'])
-                tmp.append(np.mean(self.daqtask.read(number_of_samples_per_channel=100)))
-            self._data.append(tmp)
+            # tmp = []
+            # for _ in range(self._asg_conf['N']):
+            #     time.sleep(self._asg_conf['t'])
+            #     tmp.append(np.mean(self.daqtask.read(number_of_samples_per_channel=100)))
+            # self._data.append(tmp)
         else:
             # from tagger
             self.counter.clear()
@@ -254,12 +256,14 @@ class Scheduler(abc.ABC):
 
     def _get_data_ref(self):
         if self.use_lockin:
+            time.sleep(self.asg_dwell)
+            self._data_ref.append(self.daqtask.read(number_of_samples_per_channel=100))
             # from lockin
-            tmp = []
-            for _ in range(self._asg_conf['N']):
-                time.sleep(self._asg_conf['t'])
-                tmp.append(np.mean(self.daqtask.read(number_of_samples_per_channel=100)))
-            self._data_ref.append(tmp)
+            # tmp = []
+            # for _ in range(self._asg_conf['N']):
+            #     time.sleep(self._asg_conf['t'])
+            #     tmp.append(np.mean(self.daqtask.read(number_of_samples_per_channel=100)))
+            # self._data_ref.append(tmp)
         else:
             # from tagger
             self.counter.clear()
