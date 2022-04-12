@@ -52,7 +52,7 @@ class Scheduler(abc.ABC):
 
         self.mw_exec_mode = ''
         self.mw_exec_modes_optional = {'scan-center-span', 'scan-start-stop'}
-        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5, 'lockin': 8}
+        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5, 'mw_sync': 4, 'lockin_sync': 8}
         self.tagger_input = {'apd': 1, 'asg': 2}
         self.counter: tt.IteratorBase = None
         self.daqtask: nidaqmx.Task = None
@@ -83,6 +83,10 @@ class Scheduler(abc.ABC):
 
         kwargs.setdefault('epoch_omit', 0)
         self.epoch_omit = kwargs['epoch_omit']
+
+        # synchronization frequency between MW and Lockin, unit: Hz
+        kwargs.setdefault('sync_freq', 50)
+        self.sync_freq = kwargs['sync_freq']  
 
         # on/off MW when on/off ASG's MW channel
         kwargs.setdefault('mw_on_off', False)
@@ -136,17 +140,19 @@ class Scheduler(abc.ABC):
         if tagger_ttl is not None:
             self.tagger_ttl = tagger_ttl
 
+
+
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
-                               tagger_seq: List[int] = None, lockin_seq: List[int] = None, N: int = 100000):
+                               tagger_seq: List[int] = None, sync_seq: List[int] = None, N: int = 100000):
         """
         Download control sequences into the memory of ASG
         :param laser_seq: laser control sequence
         :param mw_seq: MW control sequence
         :param tagger_seq: tagger readout control sequence
-        :param lockin_seq: lock-in amplifier control sequence
+        :param sync_seq: synchronization sequence between Lock-in amplifier and MW
         :param N: repetition number of sequences periods for each detection point
         """
-        sequences = [laser_seq, mw_seq, tagger_seq, lockin_seq]
+        sequences = [laser_seq, mw_seq, tagger_seq, sync_seq]
         if not any(sequences):
             raise ValueError('laser_seq, mw_seq and tagger_seq cannot be all None')
         sequences = [seq for seq in sequences if seq is not None]  # non-None sequences
@@ -161,7 +167,8 @@ class Scheduler(abc.ABC):
         idx_laser_channel = self.channel['laser'] - 1
         idx_mw_channel = self.channel['mw'] - 1
         idx_tagger_channel = self.channel['tagger'] - 1
-        idx_lockin_channel = self.channel['lockin'] - 1
+        idx_mw_sync_channel = self.channel['mw_sync'] - 1
+        idx_lockin_sync_channel = self.channel['lockin_sync'] - 1
 
         self.reset_asg_sequence()
         if laser_seq is not None:
@@ -170,20 +177,24 @@ class Scheduler(abc.ABC):
             self._asg_sequences[idx_mw_channel] = mw_seq
         if tagger_seq is not None:
             self._asg_sequences[idx_tagger_channel] = tagger_seq
-        if lockin_seq is not None:
-            self._asg_sequences[idx_lockin_channel] = lockin_seq
+        if sync_seq is not None:
+            self._asg_sequences[idx_mw_sync_channel] = sync_seq
+            self._asg_sequences[idx_lockin_sync_channel] = sync_seq
 
         # connect & download pulse data
         self.asg.load_data(self._asg_sequences)
 
-    def configure_lockin_counting(self, channel: str = 'Dev1/ai0'):
-        """
 
-        :param channel: output channel from NIDAQ to PC
+    def configure_lockin_counting(self, channel: str = 'Dev1/ai0', freq: int = None):
         """
-        self.lockin = LockInAmplifier(N=self._asg_conf['N'])
+        需要在 config_odmr_seq 之前调用
+        :param channel: output channel from NIDAQ to PC
+        :param freq: synchronization frequency between MW and Lockin
+        """
         self.daqtask = nidaqmx.Task()
         self.daqtask.ai_channels.add_ai_voltage_chan(channel)
+        if freq is not None:
+            self.sync_freq = freq
 
     def configure_tagger_counting(self, apd_channel: int = None, asg_channel: int = None, reader: str = 'counter'):
         """
@@ -240,6 +251,7 @@ class Scheduler(abc.ABC):
 
     def _get_data(self):
         if self.use_lockin:
+            time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data.append(self.daqtask.read(number_of_samples_per_channel=100))
             # from lockin
@@ -257,6 +269,7 @@ class Scheduler(abc.ABC):
 
     def _get_data_ref(self):
         if self.use_lockin:
+            time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data_ref.append(self.daqtask.read(number_of_samples_per_channel=100))
             # from lockin
@@ -487,16 +500,13 @@ class Scheduler(abc.ABC):
         Generate file name of data acquisition result, based on time, data and random numbers
         :return: file name, str type
         """
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if self.with_ref:
             # calculate signals and reference counts
-            fname = os.path.join(self.output_dir,
-                                 '{}-counts-with-ref-{}-{}'.format(self.name.split()[0], str(datetime.date.today()),
-                                                                   uuid.uuid1()))
+            fname = os.path.join(self.output_dir, '{}-counts-with-ref-{}'.format(self.name.split()[0], timestamp))
         else:
             # just calculate signal counts
-            fname = os.path.join(self.output_dir,
-                                 '{}-counts-{}-{}'.format(self.name.split()[0], str(datetime.date.today()),
-                                                          uuid.uuid1()))
+            fname = os.path.join(self.output_dir, '{}-counts-{}'.format(self.name.split()[0], timestamp))
         return fname
 
     def save_result(self, fname: str = None):
@@ -507,8 +517,7 @@ class Scheduler(abc.ABC):
         if not self._result or not self._result_detail:
             raise ValueError('empty result cannot be saved')
         if fname is None:
-            fname = os.path.join(self.output_dir,
-                                 '{}-result-{}-{}'.format(self.name, str(datetime.date.today()), uuid.uuid1()))
+            fname = self._gene_data_result_fname()
         with open(fname + '.json', 'w') as f:
             json.dump(self._result_detail, f)
         print('Detailed data result has been saved into {}'.format(fname + '.json'))
@@ -686,7 +695,7 @@ class FrequencyDomainScheduler(Scheduler):
         self._cal_counts_result()
 
         # 3. save result
-        self.save_result(self._gene_data_result_fname())
+        self.save_result()
 
     def run_scanning(self, mw_control: str = 'on'):
         """
@@ -818,7 +827,7 @@ class TimeDomainScheduler(Scheduler):
         self._cal_counts_result()
 
         # 3. save result
-        self.save_result(self._gene_data_result_fname())
+        self.save_result()
 
     def run_scanning(self):
         """
