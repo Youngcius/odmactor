@@ -155,10 +155,12 @@ class PulseScheduler(FrequencyDomainScheduler):
             sync_seq = [half_period, half_period]
             t1, t2 = int(sum(laser_seq)), int(half_period * 2)
             t = t1 * t2 / math.gcd(t1, t2)
-            laser_seq *= int(t / t1)
-            mw_seq *= int(t / t1)
-            tagger_seq *= int(t / t1)
+            N_mult = int(t / t1)
+            laser_seq *= N_mult
+            mw_seq *= N_mult
+            tagger_seq *= N_mult
             sync_seq *= int(t / t2)
+            N = int(N / N_mult)
 
         self.download_asg_sequences(
             laser_seq=laser_seq, mw_seq=flip_sequence(mw_seq) if self.mw_ttl == 0 else mw_seq,

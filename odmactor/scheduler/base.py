@@ -140,8 +140,6 @@ class Scheduler(abc.ABC):
         if tagger_ttl is not None:
             self.tagger_ttl = tagger_ttl
 
-
-
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
                                tagger_seq: List[int] = None, sync_seq: List[int] = None, N: int = 100000):
         """
