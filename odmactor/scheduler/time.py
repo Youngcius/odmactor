@@ -20,8 +20,6 @@ from typing import List
 from odmactor.utils.sequence import flip_sequence
 
 
-# TODO: lock-in mode not implemented
-
 class RamseyScheduler(TimeDomainScheduler):
     """
     Ramsey detecting scheduler
