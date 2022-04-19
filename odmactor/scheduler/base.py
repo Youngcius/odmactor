@@ -612,7 +612,9 @@ class Scheduler(abc.ABC):
 
     @property
     def sequences_figure(self) -> Figure:
-        return sequences_to_figure(self._asg_sequences)
+        seqs = copy.deepcopy(self._asg_sequences)
+        seqs[self.channel['mw_sync'] - 1], seqs[self.channel['lockin_sync'] - 1] = [0, 0], [0, 0]
+        return sequences_to_figure(seqs)
 
 
 class FrequencyDomainScheduler(Scheduler):
