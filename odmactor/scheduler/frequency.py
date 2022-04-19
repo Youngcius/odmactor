@@ -13,8 +13,9 @@ import math
 import numpy as np
 import scipy.constants as C
 from typing import List
+from copy import deepcopy
 from odmactor.scheduler.base import FrequencyDomainScheduler
-from odmactor.utils import flip_sequence
+from odmactor.utils.sequence import flip_sequence
 
 
 class CWScheduler(FrequencyDomainScheduler):
@@ -49,15 +50,17 @@ class CWScheduler(FrequencyDomainScheduler):
             half_period = int(1 / self.sync_freq / 2 / C.nano)
             sync_seq = [half_period, half_period]
             cont_seq = [half_period * 2, 0]
+            self._conf_time_paras(sum(cont_seq), N)
             self.download_asg_sequences(
                 laser_seq=cont_seq, mw_seq=flip_sequence(cont_seq) if self.mw_ttl == 0 else cont_seq,
-                sync_seq=sync_seq, N=N
+                sync_seq=sync_seq
             )
         else:  # use parameter period
             cont_seq = [period, 0]
+            self._conf_time_paras(sum(cont_seq), N)
             self.download_asg_sequences(
                 laser_seq=cont_seq, mw_seq=flip_sequence(cont_seq) if self.mw_ttl == 0 else cont_seq,
-                tagger_seq=cont_seq, N=N
+                tagger_seq=cont_seq
             )
 
     def run_single_step(self, power, freq, mw_control='on') -> List[float]:
@@ -135,7 +138,6 @@ class PulseScheduler(FrequencyDomainScheduler):
         """
         # unit: ns
         # total time for 'N' period, also for MW operation time at each frequency point
-        sync_seq = [0, 0]
         if self.two_pulse_readout:
             laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read,
                          pre_read + t_read_sig + inter_readout + t_read_sig + inter_period, 0]
@@ -150,21 +152,28 @@ class PulseScheduler(FrequencyDomainScheduler):
             tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read, t_read_sig, inter_period]
             # apd_seq = [sum(tagger_seq[:2]), sum(tagger_seq[-2:])]
 
+        # if self.use_lockin:
+        #     half_period = int(1 / self.sync_freq / 2 / C.nano)
+        #     sync_seq = [half_period, half_period]
+        #     t1, t2 = int(sum(laser_seq)), int(half_period * 2)
+        #     t = t1 * t2 / math.gcd(t1, t2)
+        #     N_mult = int(t / t1)
+        #     laser_seq *= N_mult
+        #     mw_seq *= N_mult
+        #     tagger_seq *= N_mult
+        #     sync_seq *= int(t / t2)
+        #     N = max(int(N / N_mult), 2)
+        sync_seq = [0, 0]
         if self.use_lockin:
             half_period = int(1 / self.sync_freq / 2 / C.nano)
             sync_seq = [half_period, half_period]
-            t1, t2 = int(sum(laser_seq)), int(half_period * 2)
-            t = t1 * t2 / math.gcd(t1, t2)
-            N_mult = int(t / t1)
-            laser_seq *= N_mult
-            mw_seq *= N_mult
-            tagger_seq *= N_mult
-            sync_seq *= int(t / t2)
-            N = int(N / N_mult)
 
+        self._conf_time_paras(sum(tagger_seq), N)
         self.download_asg_sequences(
-            laser_seq=laser_seq, mw_seq=flip_sequence(mw_seq) if self.mw_ttl == 0 else mw_seq,
-            tagger_seq=tagger_seq, sync_seq=sync_seq, N=N
+            laser_seq=flip_sequence(laser_seq) if self.laser_ttl == 0 else laser_seq,
+            mw_seq=flip_sequence(mw_seq) if self.mw_ttl == 0 else mw_seq,
+            tagger_seq=flip_sequence(tagger_seq) if self.tagger_ttl == 0 else tagger_seq,
+            sync_seq=sync_seq
         )
 
     def run_single_step(self, freq, power=None, mw_control='on') -> List[float]:

@@ -17,7 +17,7 @@ from RsInstrument import RsInstrument
 from odmactor.utils.asg import ASG
 from odmactor.utils import dBm_to_mW, mW_to_dBm
 from typing import List, Any, Optional
-from odmactor.utils.sequence import seq_to_str, seq_to_fig
+from odmactor.utils.sequence import sequences_to_string, sequences_to_figure
 from matplotlib.figure import Figure
 
 
@@ -449,11 +449,11 @@ class Scheduler(abc.ABC):
 
     @property
     def sequences_strings(self) -> str:
-        return seq_to_str(self._asg_sequences)
+        return sequences_to_string(self._asg_sequences)
 
     @property
     def sequences_figure(self) -> Figure:
-        return seq_to_fig(self._asg_sequences)
+        return sequences_to_figure(self._asg_sequences)
 
 
 class FrequencyDomainScheduler(Scheduler):
