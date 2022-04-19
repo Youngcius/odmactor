@@ -3,6 +3,7 @@ Scheduler abstract base class
 """
 
 import abc
+import copy
 import datetime
 import time
 import uuid
@@ -17,6 +18,7 @@ import TimeTagger as tt
 from tqdm import tqdm
 from odmactor.instrument import ASG, Microwave, Laser, LockInAmplifier
 from odmactor.utils import dBm_to_mW, mW_to_dBm
+from odmactor.utils.sequence import expand_to_same_length
 from typing import List, Any, Optional
 from odmactor.utils.sequence import sequences_to_string, sequences_to_figure
 from matplotlib.figure import Figure
@@ -96,6 +98,9 @@ class Scheduler(abc.ABC):
         kwargs.setdefault('use_lockin', False)
         self.use_lockin = kwargs['use_lockin']
 
+        kwargs.setdefault('output_lockin', False)
+        self.output_lockin = kwargs['output_lockin']
+
         # initialize instruments
         self.laser = Laser()
         self.asg = ASG()
@@ -172,7 +177,13 @@ class Scheduler(abc.ABC):
 
         # connect & download pulse data
         # self._asg_sequences = self.asg.normalize_data(self._asg_sequences)
-        self.asg.load_data(self._asg_sequences)
+        if self.output_lockin:
+            seqs = expand_to_same_length(self._asg_sequences)
+        else:
+            seqs = copy.deepcopy(self._asg_sequences)
+            seqs[self.channel['mw_sync'] - 1], seqs[self.channel['lockin_sync'] - 1] = [0, 0], [0, 0]
+
+        self.asg.load_data(seqs)
 
     def configure_lockin_counting(self, channel: str = 'Dev1/ai0', freq: int = None):
         """

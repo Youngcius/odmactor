@@ -74,14 +74,14 @@ class ASG(ASG8005):
         is_connected = super(ASG, self).connect()
         asg_data = self.normalize_data(asg_data)
         if is_connected == 1:
-            super(ASG, self).download_ASG_pulse_data(asg_data, [len(row) for row in asg_data])
+            return super(ASG, self).download_ASG_pulse_data(asg_data, [len(row) for row in asg_data])
         else:
             raise ConnectionError('ASG not connected')
 
     def check_data(self, asg_data: List[List[int]]):
         return super(ASG, self).checkdata(asg_data, [len(row) for row in asg_data])
 
-    def connect(self) -> bool:
+    def connect(self):
         return super(ASG, self).connect()
 
     def start(self, count=1):
