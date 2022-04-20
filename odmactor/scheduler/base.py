@@ -98,6 +98,7 @@ class Scheduler(abc.ABC):
         kwargs.setdefault('use_lockin', False)
         self.use_lockin = kwargs['use_lockin']
 
+        # output lock-in sync sequence from ASG or not
         kwargs.setdefault('output_lockin', False)
         self.output_lockin = kwargs['output_lockin']
 
@@ -176,13 +177,11 @@ class Scheduler(abc.ABC):
             self._asg_sequences[self.channel['lockin_sync'] - 1] = sync_seq
 
         # connect & download pulse data
-        # self._asg_sequences = self.asg.normalize_data(self._asg_sequences)
         if self.output_lockin:
             seqs = expand_to_same_length(self._asg_sequences)
         else:
             seqs = copy.deepcopy(self._asg_sequences)
             seqs[self.channel['mw_sync'] - 1], seqs[self.channel['lockin_sync'] - 1] = [0, 0], [0, 0]
-
         self.asg.load_data(seqs)
 
     def configure_lockin_counting(self, channel: str = 'Dev1/ai0', freq: int = None):
