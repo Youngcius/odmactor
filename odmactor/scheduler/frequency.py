@@ -9,11 +9,8 @@ Remarks: 连续波谱不是典型的量子传感过程，实验中系统处于�
 """
 
 import time
-import math
-import numpy as np
 import scipy.constants as C
 from typing import List
-from copy import deepcopy
 from odmactor.scheduler.base import FrequencyDomainScheduler
 from odmactor.utils.sequence import flip_sequence
 
@@ -85,7 +82,7 @@ class CWScheduler(FrequencyDomainScheduler):
             raise ValueError('unsupported mw_control parameter')
 
         self._start_device()
-        time.sleep(self.time_pad)  # 先让激光和微波开几秒
+        time.sleep(self.time_pad)  # let Laser and MW firstly start for several seconds
         time.sleep(self.asg_dwell)
         counts = self.counter.getData().ravel().tolist()
 
@@ -152,17 +149,6 @@ class PulseScheduler(FrequencyDomainScheduler):
             tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read, t_read_sig, inter_period]
             # apd_seq = [sum(tagger_seq[:2]), sum(tagger_seq[-2:])]
 
-        # if self.use_lockin:
-        #     half_period = int(1 / self.sync_freq / 2 / C.nano)
-        #     sync_seq = [half_period, half_period]
-        #     t1, t2 = int(sum(laser_seq)), int(half_period * 2)
-        #     t = t1 * t2 / math.gcd(t1, t2)
-        #     N_mult = int(t / t1)
-        #     laser_seq *= N_mult
-        #     mw_seq *= N_mult
-        #     tagger_seq *= N_mult
-        #     sync_seq *= int(t / t2)
-        #     N = max(int(N / N_mult), 2)
         sync_seq = [0, 0]
         if self.use_lockin:
             half_period = int(1 / self.sync_freq / 2 / C.nano)
@@ -199,7 +185,7 @@ class PulseScheduler(FrequencyDomainScheduler):
             raise ValueError('unsupported mw_control parameter')
 
         self._start_device()
-        time.sleep(0.5)  # 先让激光和微波开几秒
+        time.sleep(0.5)  # let Laser and MW firstly start for several seconds
         time.sleep(self.asg_dwell)
         counts = self.counter.getData().ravel().tolist()
         self.stop()

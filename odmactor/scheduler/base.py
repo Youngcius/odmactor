@@ -6,11 +6,9 @@ import abc
 import copy
 import datetime
 import time
-import uuid
 import json
 import os
 import pickle
-import threading
 import nidaqmx
 import numpy as np
 import scipy.constants as C
@@ -261,12 +259,6 @@ class Scheduler(abc.ABC):
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data.append(self.daqtask.read(number_of_samples_per_channel=1000))
-            # from lockin
-            # tmp = []
-            # for _ in range(self._asg_conf['N']):
-            #     time.sleep(self._asg_conf['t'])
-            #     tmp.append(np.mean(self.daqtask.read(number_of_samples_per_channel=100)))
-            # self._data.append(tmp)
         else:
             # from tagger
             self.counter.clear()
@@ -287,12 +279,6 @@ class Scheduler(abc.ABC):
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data_ref.append(self.daqtask.read(number_of_samples_per_channel=1000))
-            # from lockin
-            # tmp = []
-            # for _ in range(self._asg_conf['N']):
-            #     time.sleep(self._asg_conf['t'])
-            #     tmp.append(np.mean(self.daqtask.read(number_of_samples_per_channel=100)))
-            # self._data_ref.append(tmp)
         else:
             # from tagger
             self.counter.clear()
@@ -302,7 +288,7 @@ class Scheduler(abc.ABC):
 
     def run(self):
         """
-        很粗糙的一个调度方法，TODO: 考虑要不要 delete
+        A rough scheduling method
         1) start device
         2) acquire data timely
         """
@@ -886,7 +872,7 @@ class TimeDomainScheduler(Scheduler):
 
         # start sequence for time: N * t
         self._start_device()
-        time.sleep(2)  # 先让激光和微波开几秒
+        time.sleep(2)  # let Laser and MW firstly start for several seconds
         time.sleep(self.asg_dwell)
         counts = self.counter.getData().ravel().tolist()
         self.stop()
