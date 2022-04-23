@@ -1,22 +1,24 @@
 """
 Scheduler abstract base class
 """
+
 import abc
+import copy
 import datetime
 import time
-import uuid
 import json
 import os
 import pickle
-import threading
+import nidaqmx
 import numpy as np
 import scipy.constants as C
 import TimeTagger as tt
-from RsInstrument import RsInstrument
-from odmactor.utils.asg import ASG
+from tqdm import tqdm
+from odmactor.instrument import ASG, Microwave, Laser, LockInAmplifier
 from odmactor.utils import dBm_to_mW, mW_to_dBm
+from odmactor.utils.sequence import expand_to_same_length
 from typing import List, Any, Optional
-from odmactor.utils.sequence import seq_to_str, seq_to_fig
+from odmactor.utils.sequence import sequences_to_string, sequences_to_figure
 from matplotlib.figure import Figure
 
 
@@ -34,23 +36,27 @@ class Scheduler(abc.ABC):
         self.pi_pulse = {'freq': None, 'power': None, 'time': None}  # unit: Hz, dBm, s
         self._result = []
         self._result_detail = {}
-        self._freqs = []
-        self._times = []
+        self._freqs = []  # unit: Hz
+        self._times = []  # unit: ns
+        self._cur_freq = C.giga
+        self._cur_time = 0
         self._asg_sequences = []
         self.reset_asg_sequence()
         self._asg_conf = {'t': 0, 'N': 0}  # to calculate self.asg_dwell = N * t
         self._mw_conf = {'freq': C.giga, 'power': 0}  # current MW parameter settings
         self._configuration = {}
         self._laser_control = True
-        self.two_pulse_readout = False  # whether use double-pulse readout
-        self._mw_instr = RsInstrument('USB0::0x0AAD::0x0054::104174::INSTR', True, True)
-        self._asg = ASG()
+        self.two_pulse_readout = False  # whether to use double-pulse readout
+
+        # connect to Laser, MW, ASG, Tagger/Lockin
+
         self.mw_exec_mode = ''
         self.mw_exec_modes_optional = {'scan-center-span', 'scan-start-stop'}
-        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5}
+        self.channel = {'laser': 1, 'mw': 2, 'apd': 3, 'tagger': 5, 'mw_sync': 4, 'lockin_sync': 8}
         self.tagger_input = {'apd': 1, 'asg': 2}
-        self.tagger = tt.createTimeTagger()
         self.counter: tt.IteratorBase = None
+        self.daqtask: nidaqmx.Task = None
+
         # properties or method for debugging
         self.sync_delay = 0.0
         self.mw_dwell = 0.0
@@ -61,66 +67,131 @@ class Scheduler(abc.ABC):
         if not os.path.exists(self.output_dir):
             os.mkdir(self.output_dir)
 
-        if 'mw_ttl' in kwargs.keys():
-            self.mw_ttl = kwargs['mw_ttl']  # 1: high-level effective; 0: low level effective
-        else:
-            self.mw_ttl = 1  # default: high-level effective
+        # 1: high-level effective; 0: low level effective
+        kwargs.setdefault('laser_ttl', 1)
+        kwargs.setdefault('mw_ttl', 1)
+        kwargs.setdefault('apd_ttl', 1)
+        kwargs.setdefault('tagger_ttl', 1)
 
-        if 'with_ref' in kwargs.keys():
-            self.with_ref = kwargs['with_ref']
-        else:
-            self.with_ref = False
-        if 'epoch_omit' in kwargs.keys():
-            self.epoch_omit = kwargs['epoch_omit']
-        else:
-            self.epoch_omit = 0
+        self.laser_ttl = kwargs['laser_ttl']
+        self.mw_ttl = kwargs['mw_ttl']
+        self.apd_ttl = kwargs['apd_ttl']
+        self.tagger_ttl = kwargs['tagger_ttl']
 
-    def asg_connect_and_download_data(self, asg_data: List[List[float]]):
-        """
-        Connect ASG and download designed sequences data into it
-        :param asg_data: a List[List[float]] data type representing
-        """
-        is_connected = self._asg.connect()  # auto stop
-        if is_connected == 1:
-            self._asg.download_ASG_pulse_data(asg_data, [len(row) for row in asg_data])
+        kwargs.setdefault('with_ref', True)
+        self.with_ref = kwargs['with_ref']
+
+        kwargs.setdefault('epoch_omit', 0)
+        self.epoch_omit = kwargs['epoch_omit']
+
+        # synchronization frequency between MW and Lockin, unit: Hz
+        kwargs.setdefault('sync_freq', 50)
+        self.sync_freq = kwargs['sync_freq']
+
+        # on/off MW when on/off ASG's MW channel
+        kwargs.setdefault('mw_on_off', False)
+        self.mw_on_off = kwargs['mw_on_off']
+
+        # with lockin or tagger
+        kwargs.setdefault('use_lockin', False)
+        self.use_lockin = kwargs['use_lockin']
+
+        # output lock-in sync sequence from ASG or not
+        kwargs.setdefault('output_lockin', False)
+        self.output_lockin = kwargs['output_lockin']
+
+        # initialize instruments
+        self.laser = Laser()
+        self.asg = ASG()
+        try:
+            self.mw = Microwave()
+        except:
+            self.mw = None
+
+        if self.use_lockin:
+            try:
+                self.lockin = LockInAmplifier()
+            except:
+                self.lockin = None
         else:
-            raise ConnectionError('ASG not connected')
+            if tt.scanTimeTagger():
+                self.tagger = tt.createTimeTagger()
+            else:
+                self.tagger = None
+
+    def reconnect(self):
+        self.laser.connect()
+        self.asg.connect()
+
+        if self.mw is not None:
+            self.mw.connect()
+
+        if self.use_lockin:
+            self.lockin = LockInAmplifier()
+        else:
+            try:
+                self.tagger.getSerial()
+            except:
+                self.tagger = tt.createTimeTagger()
+
+    def set_asg_sequences_ttl(self, laser_ttl=None, mw_ttl=None, apd_ttl=None, tagger_ttl=None):
+        if laser_ttl is not None:
+            self.laser_ttl = laser_ttl
+        if mw_ttl is not None:
+            self.mw_ttl = mw_ttl
+        if apd_ttl is not None:
+            self.apd_ttl = apd_ttl
+        if tagger_ttl is not None:
+            self.tagger_ttl = tagger_ttl
 
     def download_asg_sequences(self, laser_seq: List[int] = None, mw_seq: List[int] = None,
-                               tagger_seq: List[int] = None, N: int = 100000):
+                               tagger_seq: List[int] = None, sync_seq: List[int] = None):
         """
         Download control sequences into the memory of ASG
         :param laser_seq: laser control sequence
         :param mw_seq: MW control sequence
         :param tagger_seq: tagger readout control sequence
-        :param N: repetition number of sequences periods for each detection point
+        :param sync_seq: synchronization sequence between Lock-in amplifier and MW
         """
+        # check sequences lengths equal or not
         sequences = [laser_seq, mw_seq, tagger_seq]
         if not any(sequences):
             raise ValueError('laser_seq, mw_seq and tagger_seq cannot be all None')
         sequences = [seq for seq in sequences if seq is not None]  # non-None sequences
         lengths = np.unique(list(map(sum, sequences)))
         if len(lengths) != 1:
-            raise ValueError('input sequences should have the same length')
-        t = lengths.item()
+            raise ValueError('laser/mw/tagger sequences should have the same length')
 
         # configure ASG period information
-        self._conf_time_paras(t, N)
-
-        idx_laser_channel = self.channel['laser'] - 1
-        idx_mw_channel = self.channel['mw'] - 1
-        idx_tagger_channel = self.channel['tagger'] - 1
-
         self.reset_asg_sequence()
         if laser_seq is not None:
-            self._asg_sequences[idx_laser_channel] = laser_seq
+            self._asg_sequences[self.channel['laser'] - 1] = laser_seq
         if mw_seq is not None:
-            self._asg_sequences[idx_mw_channel] = mw_seq
+            self._asg_sequences[self.channel['mw'] - 1] = mw_seq
         if tagger_seq is not None:
-            self._asg_sequences[idx_tagger_channel] = tagger_seq
+            self._asg_sequences[self.channel['tagger'] - 1] = tagger_seq
+        if sync_seq is not None:
+            self._asg_sequences[self.channel['mw_sync'] - 1] = sync_seq
+            self._asg_sequences[self.channel['lockin_sync'] - 1] = sync_seq
 
         # connect & download pulse data
-        self.asg_connect_and_download_data(self._asg_sequences)
+        if self.output_lockin:
+            seqs = expand_to_same_length(self._asg_sequences)
+        else:
+            seqs = copy.deepcopy(self._asg_sequences)
+            seqs[self.channel['mw_sync'] - 1], seqs[self.channel['lockin_sync'] - 1] = [0, 0], [0, 0]
+        self.asg.load_data(seqs)
+
+    def configure_lockin_counting(self, channel: str = 'Dev1/ai0', freq: int = None):
+        """
+        需要在 config_odmr_seq 之前调用
+        :param channel: output channel from NIDAQ to PC
+        :param freq: synchronization frequency between MW and Lockin
+        """
+        self.daqtask = nidaqmx.Task()
+        self.daqtask.ai_channels.add_ai_voltage_chan(channel)
+        if freq is not None:
+            self.sync_freq = freq
 
     def configure_tagger_counting(self, apd_channel: int = None, asg_channel: int = None, reader: str = 'counter'):
         """
@@ -161,30 +232,63 @@ class Scheduler(abc.ABC):
         """
         Start device: MW, ASG; Execute Measurement instance.
         """
+
         # 1. run ASG firstly
         self._data.clear()
         self._data_ref.clear()
-        self._asg.start()
+        self.asg.start()
 
-        # 2. restart self.counter if necessary
-        if not self.counter.isRunning():
+        # 2. restart self.counter or self.lockin if necessary
+        if self.counter is not None:
             self.counter.start()
 
         # 3. run MW then
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
-        print('MW on/off status:', self._mw_instr.instrument_status_checking)
+        self.mw.start()
+        print('MW on/off status:', self.mw.instrument_status_checking)
 
     def _get_data(self):
-        self._data.append(self.counter.getData().ravel().tolist())
-        self.counter.clear()
+        """
+        Read signal data from data acquisition devices, i.e., APD + Tagger, or Lock-in + DAQ
+        ---
+        1. with Time Tagger
+            read one value in each ASG operation period, totally N values
+        2. with Lock-in Amplifier
+            read M values after the last ASG operation period, M is not necessarily equal to N
+        """
+        if self.use_lockin:
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)
+            self._data.append(self.daqtask.read(number_of_samples_per_channel=1000))
+        else:
+            # from tagger
+            self.counter.clear()
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)
+            self._data.append(self.counter.getData().ravel().tolist())
 
     def _get_data_ref(self):
-        self._data_ref.append(self.counter.getData().ravel().tolist())
-        self.counter.clear()
+        """
+        Read reference data from data acquisition devices, i.e., APD + Tagger, or Lock-in + DAQ
+        ---
+        1. with Time Tagger
+            read one value in each ASG operation period, totally N values
+        2. with Lock-in Amplifier
+            read M values after the last ASG operation period, M is not necessarily equal to N
+        """
+        if self.use_lockin:
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)
+            self._data_ref.append(self.daqtask.read(number_of_samples_per_channel=1000))
+        else:
+            # from tagger
+            self.counter.clear()
+            time.sleep(self.time_pad)
+            time.sleep(self.asg_dwell)
+            self._data_ref.append(self.counter.getData().ravel().tolist())
 
     def run(self):
         """
-        Rough scheduling method
+        A rough scheduling method
         1) start device
         2) acquire data timely
         """
@@ -196,18 +300,26 @@ class Scheduler(abc.ABC):
         """
         Stop hardware (ASG, MW, Tagger) scheduling
         """
-        self.counter.stop()
-        self._asg.stop()
-        self._mw_instr.write_bool('OUTPUT:STATE', False)
+        if self.counter is not None:
+            self.counter.stop()
+        if self.daqtask is not None:
+            self.daqtask.stop()
+        self.asg.stop()
+        self.mw.stop()
         print('Stopped: Scheduling process has stopped')
 
     def close(self):
         """
         Release instrument (ASG, MW, Tagger) resources
         """
-        self._asg.close_device()
-        self._mw_instr.close()
-        tt.freeTimeTagger(self.tagger)
+        if self.asg is not None:
+            self.asg.close()
+        if self.mw is not None:
+            self.mw.close()
+        if not self.use_lockin and self.tagger is not None:
+            tt.freeTimeTagger(self.tagger)
+        if self.use_lockin and self.daqtask is not None:
+            self.daqtask.close()
         print('Closed: All instrument resources has been released')
 
     def configure_mw_paras(self, power: float = None, freq: float = None, regulate_pi: bool = False, *args, **kwargs):
@@ -219,13 +331,14 @@ class Scheduler(abc.ABC):
         """
         if power is not None:
             self._mw_conf['power'] = power
-            self._mw_instr.write_float('POW', power)
+            self.mw.set_power(power)
             if regulate_pi:  # regulate time duration based on MW power
                 self._regulate_pi_pulse(power=power)  # by power
         if freq is not None:
             self._mw_conf['freq'] = freq
-            self._mw_instr.write_float('FREQUENCY', freq)
-        self._mw_instr.write_bool('OUTPUT:STATE', True)
+            self.mw.set_frequency(freq)
+
+        self.mw.start()
 
     def _regulate_pi_pulse(self, power: float = None, time: float = None):
         """
@@ -272,7 +385,7 @@ class Scheduler(abc.ABC):
         idx_laser_channel = self.channel['laser'] - 1
         t = sum(self._asg_sequences[idx_laser_channel])
         self._asg_sequences[idx_laser_channel] = [t, 0]
-        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         self.asg.start()
 
     def laser_off_seq(self):
@@ -281,7 +394,7 @@ class Scheduler(abc.ABC):
         """
         idx_laser_channel = self.channel['laser'] - 1
         self._asg_sequences[idx_laser_channel] = [0, 0]
-        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         self.asg.start()
 
     def mw_on_seq(self):
@@ -295,7 +408,7 @@ class Scheduler(abc.ABC):
         else:
             mw_seq = [t, 0]
         self._asg_sequences[idx_mw_channel] = mw_seq
-        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         self.asg.start()
 
     def mw_off_seq(self):
@@ -305,7 +418,7 @@ class Scheduler(abc.ABC):
         mw_seq = [0, 0]
         idx_mw_channel = self.channel['mw'] - 1
         self._asg_sequences[idx_mw_channel] = mw_seq
-        self.asg_connect_and_download_data(self._asg_sequences)
+        self.asg.load_data(self._asg_sequences)
         self.asg.start()
 
     def mw_control_seq(self, mw_seq: List[int] = None) -> Optional[List[int]]:
@@ -319,19 +432,19 @@ class Scheduler(abc.ABC):
             return self._asg_sequences[idx_mw_channel]
         else:
             self._asg_sequences[idx_mw_channel] = mw_seq
-            self.asg_connect_and_download_data(self._asg_sequences)
-            self._asg.start()
+            self.asg.load_data(self._asg_sequences)
+            self.asg.start()
 
-    def _conf_time_paras(self, t, N):
+    def _conf_time_paras(self, t, N=100000):
         """
         Configure characteristic time parameters
         :param t: total time of one ASG sequence period, unit: ns
-        :param N: repetition number of ASG sequence
+        :param N: repetition number of ASG sequence periods for each detection point
         """
         self._asg_conf['t'] = t * C.nano  # unit: s
         self._asg_conf['N'] = N
         self.asg_dwell = self._asg_conf['N'] * self._asg_conf['t']  # duration without padding
-        self.time_pad = 0.035 * self.asg_dwell  # 0.035
+        self.time_pad = 0.02 * self.asg_dwell  # 0.035
 
     def _cal_counts_result(self):
         """
@@ -384,16 +497,13 @@ class Scheduler(abc.ABC):
         Generate file name of data acquisition result, based on time, data and random numbers
         :return: file name, str type
         """
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if self.with_ref:
             # calculate signals and reference counts
-            fname = os.path.join(self.output_dir,
-                                 '{}-counts-with-ref-{}-{}'.format(self.name.split()[0], str(datetime.date.today()),
-                                                                   uuid.uuid1()))
+            fname = os.path.join(self.output_dir, '{}-counts-with-ref-{}'.format(self.name.split()[0], timestamp))
         else:
             # just calculate signal counts
-            fname = os.path.join(self.output_dir,
-                                 '{}-counts-{}-{}'.format(self.name.split()[0], str(datetime.date.today()),
-                                                          uuid.uuid1()))
+            fname = os.path.join(self.output_dir, '{}-counts-{}'.format(self.name.split()[0], timestamp))
         return fname
 
     def save_result(self, fname: str = None):
@@ -404,14 +514,34 @@ class Scheduler(abc.ABC):
         if not self._result or not self._result_detail:
             raise ValueError('empty result cannot be saved')
         if fname is None:
-            fname = os.path.join(self.output_dir,
-                                 '{}-result-{}-{}'.format(self.name, str(datetime.date.today()), uuid.uuid1()))
+            fname = self._gene_data_result_fname()
         with open(fname + '.json', 'w') as f:
             json.dump(self._result_detail, f)
+        self.output_fname = fname + '.json'
         print('Detailed data result has been saved into {}'.format(fname + '.json'))
 
     def __str__(self):
         return self.name
+
+    @property
+    def sequences(self):
+        return self._asg_sequences
+
+    @property
+    def frequencies(self):
+        return self._freqs
+
+    @property
+    def times(self):
+        return self._times
+
+    @property
+    def cur_freq(self):
+        return self._cur_freq
+
+    @property
+    def cur_time(self):
+        return self._cur_time
 
     @abc.abstractmethod
     def configure_odmr_seq(self, *args, **kwargs):
@@ -447,19 +577,11 @@ class Scheduler(abc.ABC):
 
     @property
     def mw_instr(self):
-        return self._mw_instr
+        return self.mw
 
     @mw_instr.setter
-    def mw_instr(self, value: RsInstrument):
-        self._mw_instr = value
-
-    @property
-    def asg(self):
-        return self._asg
-
-    @asg.setter
-    def asg(self, value: ASG):
-        self.asg = value
+    def mw_instr(self, value: Microwave):
+        self.mw = value
 
     @property
     def result(self) -> List[List[float]]:
@@ -471,11 +593,13 @@ class Scheduler(abc.ABC):
 
     @property
     def sequences_strings(self) -> str:
-        return seq_to_str(self._asg_sequences)
+        return sequences_to_string(self._asg_sequences)
 
     @property
     def sequences_figure(self) -> Figure:
-        return seq_to_fig(self._asg_sequences)
+        seqs = copy.deepcopy(self._asg_sequences)
+        seqs[self.channel['mw_sync'] - 1], seqs[self.channel['lockin_sync'] - 1] = [0, 0], [0, 0]
+        return sequences_to_figure(seqs)
 
 
 class FrequencyDomainScheduler(Scheduler):
@@ -510,9 +634,9 @@ class FrequencyDomainScheduler(Scheduler):
         """
         # ===================================================================
         for _ in range(self.epoch_omit):
-            self._mw_instr.write_float('FREQUENCY', self._freqs[0])
+            self.mw.set_frequency(self._freqs[0])
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('scanning freq {:.3f} GHz (trivial)'.format(self._freqs[0] / C.giga))
+            # print('scanning freq {:.3f} GHz (trivial)'.format(self._freqs[0] / C.giga))
             time.sleep(self.time_pad + self.asg_dwell)
 
             if self.with_ref:
@@ -521,28 +645,41 @@ class FrequencyDomainScheduler(Scheduler):
         # ===================================================================
 
         mw_on_seq = self._asg_sequences[self.channel['mw'] - 1]
-        for i, freq in enumerate(self._freqs):
-            self._mw_instr.write_float('FREQUENCY', freq)
-            # self._mw_instr.write_bool('OUTPUT:STATE', True)
+        for freq in tqdm(self._freqs):
+            self._cur_freq = freq
+            self.mw.set_frequency(freq)
 
-            print('scanning freq {:.3f} GHz'.format(freq / C.giga))
-            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
-            time.sleep(self.time_pad)
-            time.sleep(self.asg_dwell)  # accumulate counts
-            t.start()  # begin readout
+            # need to turn on MW again
+            if self.mw_on_off:
+                self.mw.start()
+
+            # print('scanning freq {:.3f} GHz'.format(freq / C.giga))
+            self._get_data()
+            # t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            # time.sleep(self.time_pad)
+            # time.sleep(self.asg_dwell)  # accumulate counts
+            # t.start()  # begin readout
+            # t.join()
 
             if self.with_ref:
-                # modify the sequences
+                # turn off MW via ASG
                 self.mw_control_seq([0, 0])
 
+                # turn off MW directly
+                if self.mw_on_off:
+                    self.mw.stop()
+
                 # reference data acquisition
-                tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
-                time.sleep(self.time_pad)
-                time.sleep(self.asg_dwell)
-                tr.start()
+                # tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
+                # time.sleep(self.time_pad)
+                # time.sleep(self.asg_dwell)
+                # tr.start()
+                self._get_data_ref()
 
                 # recover the sequences
                 self.mw_control_seq(mw_on_seq)
+
+                # tr.join()
 
         print('finished data acquisition')
 
@@ -558,7 +695,7 @@ class FrequencyDomainScheduler(Scheduler):
         self._cal_counts_result()
 
         # 3. save result
-        self.save_result(self._gene_data_result_fname())
+        self.save_result()
 
     def run_scanning(self, mw_control: str = 'on'):
         """
@@ -632,9 +769,10 @@ class TimeDomainScheduler(Scheduler):
         # =======================================================
         for _ in range(self.epoch_omit):
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
-            self._gene_detect_seq(self._times[0])
-            self._asg.start()
+            # print('scanning freq {:.3f} ns (trivial)'.format(self._times[0]))
+
+            self.gene_detect_seq(self._times[0])
+            self.asg.start()
             time.sleep(self.time_pad + self.asg_dwell)
 
             if self.with_ref:
@@ -642,26 +780,38 @@ class TimeDomainScheduler(Scheduler):
                 time.sleep(self.time_pad + self.asg_dwell)
 
         # =======================================================
-        for i, duration in enumerate(self._times):
-            self._gene_detect_seq(duration)
-            self._asg.start()
+        for duration in tqdm(self._times):
+            self._cur_time = duration
+            self.gene_detect_seq(duration)
+            self.asg.start()
             # self._mw_instr.write_bool('OUTPUT:STATE', True)
-            print('scanning time interval: {:.3f} ns'.format(duration))
+            # print('scanning time interval: {:.3f} ns'.format(duration))
+
+            # need to turn on MW again
+            if self.mw_on_off:
+                self.mw.start()
 
             # Signal readout
-            t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
-            time.sleep(self.time_pad)
-            time.sleep(self.asg_dwell)  # accumulate counts
-            t.start()  # begin readout
+            # t = threading.Thread(target=self._get_data, name='thread-{}'.format(i))
+            # time.sleep(self.time_pad)
+            # time.sleep(self.asg_dwell)  # accumulate counts
+            self._get_data()  # 4.6 修改，不用同步
+            # t.start()  # begin readout
 
             # Reference readout
             if self.with_ref:
+                # turn off MW via ASG
                 self.mw_control_seq([0, 0])
-                # self._mw_instr.write_bool('OUTPUT:STATE', False)
-                tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
-                time.sleep(self.time_pad)
-                time.sleep(self.asg_dwell)
-                tr.start()
+
+                # turn off MW directly
+                if self.mw_on_off:
+                    self.mw.stop()
+
+                # tr = threading.Thread(target=self._get_data_ref, name='thread-ref-{}'.format(i))
+                # time.sleep(self.time_pad)
+                # time.sleep(self.asg_dwell)
+                self._get_data_ref()
+                # tr.start()
 
         print('finished data acquisition')
 
@@ -677,7 +827,7 @@ class TimeDomainScheduler(Scheduler):
         self._cal_counts_result()
 
         # 3. save result
-        self.save_result(self._gene_data_result_fname())
+        self.save_result()
 
     def run_scanning(self):
         """
@@ -693,16 +843,16 @@ class TimeDomainScheduler(Scheduler):
         self._acquire_data()  # scanning time intervals in this loop
         self.stop()
 
-    def _gene_pseudo_detect_seq(self):
+    def gene_pseudo_detect_seq(self):
         """
         Generate pseudo pulses for visualization and regulation
         """
         ts = list(self._cache.values())[:-1]
         t_sum = sum([t for t in ts if t is not None])
-        self._gene_detect_seq(int(t_sum / 40) * 10)
+        self.gene_detect_seq(int(t_sum / 40) * 10)
 
     @abc.abstractmethod
-    def _gene_detect_seq(self, *args, **kwargs):
+    def gene_detect_seq(self, *args, **kwargs):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -718,11 +868,11 @@ class TimeDomainScheduler(Scheduler):
         print('running with time = {:.3f} ns, MW power = {:.2f} dBm ...'.format(self.asg_dwell, self._mw_conf['power']))
 
         # generate ASG sequences
-        self._gene_detect_seq(t_free)
+        self.gene_detect_seq(t_free)
 
         # start sequence for time: N * t
         self._start_device()
-        time.sleep(2)  # 先让激光和微波开几秒
+        time.sleep(2)  # let Laser and MW firstly start for several seconds
         time.sleep(self.asg_dwell)
         counts = self.counter.getData().ravel().tolist()
         self.stop()

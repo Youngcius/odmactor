@@ -4,7 +4,7 @@ ODMR software SDK integrating functions of ODMR detection and spin manipulation.
 
 *This project is on continuous updating & using ...*
 
-> Last updating date: February, 2022<br>
+> Last updating date: April, 2022<br>
 > Current implementation: ODMR detection
 
 ## Design Method
@@ -76,6 +76,7 @@ of them are like the following figure.
 - `scheduler.result_detail`: a `dict` instance in Python, consisting of detailed measurement result
 - `scheduler.pi_pulse`: `{'freq': ..., 'power': ..., 'time': ...}`, consisting of configuration information of the
   calibrated MW $\pi$ pulse
+- `scheduler.sequences`: rational ASG sequences data in form of lists
 - `scheduler.sequences_figure`: visualized ASG control sequences
 
 **specific scheduling methods**
@@ -96,29 +97,45 @@ of them are like the following figure.
 
 ### Specific hardware used
 
-Most general hardware resources are supported by our Odmactor programs, while some specific instrument currently used in
-our [QIM](https://quantum.lab.arizona.edu/) group are as follows.
+Most general hardware resources are supported by our Odmactor programs. Below are some essential instruments usde in a systematic
+ODMR platform and directly controlled by our programs currently used in our [QIM](https://quantum.lab.arizona.edu/) group. 
 
 **Arbitrary Sequence Generator (ASG)**
 
-The most important instrument to synchronize control measurement processes.
+This is the most important instrument to synchronize control measurement processes.
 
 - Vendor: [CIQTEK](https://www.ciqtek.com/)
 - Type: ASG8005
-- Output: 8 control channels
+- Feature: 8 control channels
 
 **Microwave instrument (MW)**
 
--
-Vendor: [SMB 100A](https://www.rohde-schwarz.com/us/products/test-and-measurement/analog-signal-generators/rs-smb100a-microwave-signal-generator_63493-9379.html)
-- Type: R&S
+- Vendor: [R&S](https://www.rohde-schwarz.com)
+- Type: [SMB 100A](https://www.rohde-schwarz.com/us/products/test-and-measurement/analog-signal-generators/rs-smb100a-microwave-signal-generator_63493-9379.html)
 
 **Time Tagger (Tagger)**
 
 This is a T/D convertor as well as A/D convertor necessary for data acquisition.
 
 - Vendor: [Swabian](https://www.swabianinstruments.com/)
-- Type: Time Tagger 20
+- Type: [Time Tagger 20](https://www.swabianinstruments.com/time-tagger/)
+- Feature: 8 detecting channels, 34 ps jitter, 8 M tags/s
+
+**Lock-in Amplifirer**
+
+Lock-in is a mature manner to detect weak signals, and this device manufactured by Standford Research
+is a usual lock-in amplifier.
+
+- Vendor: [Stanford Research](https://www.thinksrs.com/)
+- Type: [RS830](https://www.thinksrs.com/products/sr810830.htm)
+- Feature: 1 mHz ~ 102.4 kHz range, 0.01 degree resolution
+
+**Data Acquisition board**
+
+NI DAQ device is used when using lock-in detecting mode instead APD with Time Tagger mode.
+
+- Vendor: [National Instruments](https://www.ni.com/)
+
 
 ## Implementation method
 
@@ -174,14 +191,14 @@ contrast = [sig / ref for sig, ref in
 ### GUI software
 
 A Graphical User Interface (GUI) version software based on this SDK is also implemented and has been used well in
-our [QIM](https://quantum.lab.arizona.edu/) group. For more information please contact the author.
+our [QIM](https://quantum.lab.arizona.edu/) group. It is also published on the author's [GitHub page](https://github.com/youngcius).
 
 ### Frequently Asked Questions
 
 **Q: Where should I get to know more about Odmactor?**
 
 **A:** If you have more demand or cooperation willingness, please contact to
-the [Quantum Information and Materials Group](https://quantum.lab.arizona.edu) of U Arizona.
+the [Quantum Information and Materials Group](https://quantum.lab.arizona.edu) of the University of Arizona.
 
 **Q: Can I modify this set of programs for my own research?**
 
@@ -190,9 +207,5 @@ more people can use or modify it. If you have more ideas or suggestions, welcome
 
 ### Copyright and License
 
-Odmactor uses [The MIT license](LICENSE).
+Odmactor uses the [MIT license](LICENSE).
 
-## Reference
-
-1. https://www.degruyter.com/document/doi/10.1515/nanoph-2019-0209/html
-2. https://zhuanlan.zhihu.com/p/361148655

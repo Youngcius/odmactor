@@ -15,4 +15,3 @@ class SpinControlScheduler(Scheduler):
     def __init__(self, *args, **kwargs):
         super(SpinControlScheduler, self).__init__(*args, **kwargs)
         self.name = 'Base Spin Control Scheduler'
-

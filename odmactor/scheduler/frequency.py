@@ -8,13 +8,11 @@ Remarks: 连续波谱不是典型的量子传感过程，实验中系统处于�
 2. Pulse detection (frequency-domain method)
 """
 
-import threading
 import time
-import numpy as np
 import scipy.constants as C
 from typing import List
 from odmactor.scheduler.base import FrequencyDomainScheduler
-from odmactor import utils
+from odmactor.utils.sequence import flip_sequence
 
 
 class CWScheduler(FrequencyDomainScheduler):
@@ -26,7 +24,7 @@ class CWScheduler(FrequencyDomainScheduler):
         super(CWScheduler, self).__init__(*args, **kwargs)
         self.name = 'CW ODMR Scheduler'
 
-    def configure_odmr_seq(self, t, N: int):
+    def configure_odmr_seq(self, period, N: int, *args, **kwargs):
         """
         Wave form for single period:
             laser (no asg control sequence):
@@ -42,15 +40,25 @@ class CWScheduler(FrequencyDomainScheduler):
             |                               |
             |                               |
         All units for the parameters is 'ns'
-        :param t: binwidth parameter for TimeTagger.Counter
+        :param period: binwidth parameter for TimeTagger.Counter
         :param N: n_values for TimeTagger.Counter
         """
-        cont_seq = [t, 0]
-        if self.mw_ttl == 0:
-            mw_seq = utils.flip_sequence(cont_seq)
-        else:
-            mw_seq = cont_seq
-        self.download_asg_sequences(laser_seq=cont_seq, mw_seq=mw_seq, tagger_seq=cont_seq, N=N)
+        if self.use_lockin:  # use parameter self.sync_freq
+            half_period = int(1 / self.sync_freq / 2 / C.nano)
+            sync_seq = [half_period, half_period]
+            cont_seq = [half_period * 2, 0]
+            self._conf_time_paras(sum(cont_seq), N)
+            self.download_asg_sequences(
+                laser_seq=cont_seq, mw_seq=flip_sequence(cont_seq) if self.mw_ttl == 0 else cont_seq,
+                sync_seq=sync_seq
+            )
+        else:  # use parameter period
+            cont_seq = [period, 0]
+            self._conf_time_paras(sum(cont_seq), N)
+            self.download_asg_sequences(
+                laser_seq=cont_seq, mw_seq=flip_sequence(cont_seq) if self.mw_ttl == 0 else cont_seq,
+                tagger_seq=cont_seq
+            )
 
     def run_single_step(self, power, freq, mw_control='on') -> List[float]:
         """
@@ -74,7 +82,7 @@ class CWScheduler(FrequencyDomainScheduler):
             raise ValueError('unsupported mw_control parameter')
 
         self._start_device()
-        time.sleep(self.time_pad)  # 先让激光和微波开几秒
+        time.sleep(self.time_pad)  # let Laser and MW firstly start for several seconds
         time.sleep(self.asg_dwell)
         counts = self.counter.getData().ravel().tolist()
 
@@ -96,7 +104,7 @@ class PulseScheduler(FrequencyDomainScheduler):
         super(PulseScheduler, self).__init__(*args, **kwargs)
         self.name = 'Pulse ODMR Scheduler'
 
-    def configure_odmr_seq(self, t_init, t_mw, t_read_sig, t_read_ref=None, inter_init_mw=3000, pre_read=200,
+    def configure_odmr_seq(self, t_init, t_mw, t_read_sig, inter_init_mw=3000, pre_read=200,
                            inter_mw_read=500, inter_readout=200, inter_period=200, N: int = 1000):
         """
         Wave form for single period:
@@ -116,8 +124,7 @@ class PulseScheduler(FrequencyDomainScheduler):
         :param t_init: time span for laser initialization, e.g. 5000
         :param t_mw: time span for microwave actual operation in a ASG period, e.g. 800
         :param t_read_sig: time span for fluorescence signal readout, e.g. 400
-        :param t_read_ref: time span for reference signal readout, e.g. 400
-                            if the parameter is not assigned, means single-pulse readout
+                            while t_read_ref is designed as the same value of t_read_sign if with_ref is True
         :param inter_init_mw: time interval between laser initialization and MW operation pulses, e.g. 3000
         :param pre_read: previous time interval before Tagger readout and after laser readout pulses
         :param inter_mw_read: time interval between MW operation and laser readout pulses
@@ -128,27 +135,32 @@ class PulseScheduler(FrequencyDomainScheduler):
         """
         # unit: ns
         # total time for 'N' period, also for MW operation time at each frequency point
-        if t_read_ref is not None:
-            self.two_pulse_readout = True
+        if self.two_pulse_readout:
             laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read,
-                         pre_read + t_read_sig + inter_readout + t_read_ref + inter_period, 0]
-            mw_seq = [0, t_init + inter_init_mw, t_mw,
-                      inter_mw_read + pre_read + t_read_sig + inter_readout + t_read_ref + inter_period]
-            tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read, t_read_sig, inter_readout,
-                          t_read_ref, inter_period]
+                         pre_read + t_read_sig + inter_readout + t_read_sig + inter_period, 0]
+            mw_seq = [0, t_init + inter_init_mw,
+                      t_mw, inter_mw_read + pre_read + t_read_sig + inter_readout + t_read_sig + inter_period]
+            tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read,
+                          t_read_sig, inter_readout, t_read_sig, inter_period]
             # apd_seq = [sum(tagger_seq[:-4]), sum(tagger_seq[-4:])]
-        else:
-            # single-pulse readout
+        else:  # single-pulse readout
             laser_seq = [t_init, inter_init_mw + t_mw + inter_mw_read, pre_read + t_read_sig + inter_period, 0]
             mw_seq = [0, t_init + inter_init_mw, t_mw, inter_mw_read + pre_read + t_read_sig + inter_period]
             tagger_seq = [0, t_init + inter_init_mw + t_mw + inter_mw_read + pre_read, t_read_sig, inter_period]
-            # apd_seq = [sum(tagger_seq[:-2], sum(tagger_seq[-2:]))]
+            # apd_seq = [sum(tagger_seq[:2]), sum(tagger_seq[-2:])]
 
-        if self.mw_ttl == 0:
-            #     # low-level effective
-            mw_seq = utils.flip_sequence(mw_seq)
+        sync_seq = [0, 0]
+        if self.use_lockin:
+            half_period = int(1 / self.sync_freq / 2 / C.nano)
+            sync_seq = [half_period, half_period]
 
-        self.download_asg_sequences(laser_seq, mw_seq, tagger_seq, N)
+        self._conf_time_paras(sum(tagger_seq), N)
+        self.download_asg_sequences(
+            laser_seq=flip_sequence(laser_seq) if self.laser_ttl == 0 else laser_seq,
+            mw_seq=flip_sequence(mw_seq) if self.mw_ttl == 0 else mw_seq,
+            tagger_seq=flip_sequence(tagger_seq) if self.tagger_ttl == 0 else tagger_seq,
+            sync_seq=sync_seq
+        )
 
     def run_single_step(self, freq, power=None, mw_control='on') -> List[float]:
         """
@@ -173,7 +185,7 @@ class PulseScheduler(FrequencyDomainScheduler):
             raise ValueError('unsupported mw_control parameter')
 
         self._start_device()
-        time.sleep(0.5)  # 先让激光和微波开几秒
+        time.sleep(0.5)  # let Laser and MW firstly start for several seconds
         time.sleep(self.asg_dwell)
         counts = self.counter.getData().ravel().tolist()
         self.stop()
