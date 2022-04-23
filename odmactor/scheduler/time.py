@@ -113,6 +113,7 @@ class RamseyScheduler(TimeDomainScheduler):
         self._asg_conf['N'] = N
         if self.with_ref:
             self.two_pulse_readout = True
+        self.two_pulse_readout = False
 
 
 class RabiScheduler(TimeDomainScheduler):
@@ -202,6 +203,7 @@ class RabiScheduler(TimeDomainScheduler):
         self._asg_conf['N'] = N
         if self.with_ref:
             self.two_pulse_readout = True
+        self.two_pulse_readout = False
 
 
 class RelaxationScheduler(TimeDomainScheduler):
@@ -308,6 +310,7 @@ class RelaxationScheduler(TimeDomainScheduler):
         self._asg_conf['N'] = N
         if self.with_ref:
             self.two_pulse_readout = True
+        self.two_pulse_readout = False
 
 
 class HahnEchoScheduler(TimeDomainScheduler):
@@ -422,6 +425,7 @@ class HahnEchoScheduler(TimeDomainScheduler):
         self._asg_conf['N'] = N
         if self.with_ref:
             self.two_pulse_readout = True
+        self.two_pulse_readout = False
 
 
 class HighDecouplingScheduler(TimeDomainScheduler):

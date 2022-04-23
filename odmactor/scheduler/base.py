@@ -256,6 +256,7 @@ class Scheduler(abc.ABC):
             read M values after the last ASG operation period, M is not necessarily equal to N
         """
         if self.use_lockin:
+            # from lockin
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data.append(self.daqtask.read(number_of_samples_per_channel=1000))
@@ -276,6 +277,7 @@ class Scheduler(abc.ABC):
             read M values after the last ASG operation period, M is not necessarily equal to N
         """
         if self.use_lockin:
+            # from lockin
             time.sleep(self.time_pad)
             time.sleep(self.asg_dwell)
             self._data_ref.append(self.daqtask.read(number_of_samples_per_channel=1000))
