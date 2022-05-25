@@ -36,13 +36,11 @@ ODMR software SDK integrating functions of ODMR detection and spin manipulation.
         1) initialize spin to excited state using calibrated MW $\pi$ pulse
         2) wait a time interval $\tau$
         3) readout final spin state (population)
-
-
-3. Dynamical Decoupling<br>
-   *Currently not implemented*
     - Hahn echo
-    - High-order Dynamical Decoupling
-4. Spin manipulation<br>
+      Sequences are similar with those for Ramsey detecting, while there is an additional MW π pulse between the two π/2 pulses.
+    - High-order dynamical decoupling
+      Sequences are similar with those for Ramsey detecting, while there are N additional MW π pulse between the two π/2 pulses.
+3. Spin manipulation<br>
    *Currently not implemented*
 
 The above specific scheduling methods could be abstracted into different detection sequences in experiments. They are
@@ -83,7 +81,7 @@ of them are like the following figure.
 
 - `scheduler.run_scanning()`: for `FrequencyDomainScheduler` and `TimeDomainScheduler`, scan time intervals and MW
   frequencies, respectively
-- `scheduler.run_single_step()`: for `FrequencyDomainScheduler` and `TimeDomainScheduler`,
+- `scheduler.run_single_step()`: for `FrequencyDomainScheduler` and `TimeDomainScheduler`, run a single setting point
 - `scheduler.set_delay_times()`: for `TimeDomainScheduler`, this function should be called to design time interval
   scanning points
 - `scheduler.set_mw_freqs()`: for `FrequencyDomainScheduler`, this function should be called to design MW frequency
@@ -191,7 +189,7 @@ contrast = [sig / ref for sig, ref in
 ### GUI software
 
 A Graphical User Interface (GUI) version software based on this SDK is also implemented and has been used well in
-our [QIM](https://quantum.lab.arizona.edu/) group. It is also published on the author's [GitHub page](https://github.com/Youngcius/odmactor-gui).
+our [QIM](https://quantum.lab.arizona.edu/) group. It is also published on the author's [GitHub page](https://github.com/youngcius).
 
 ### Frequently Asked Questions
 

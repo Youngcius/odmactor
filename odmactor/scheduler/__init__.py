@@ -8,3 +8,4 @@ from odmactor.scheduler.frequency import CWScheduler, PulseScheduler
 from odmactor.scheduler.time import RamseyScheduler, RabiScheduler, RelaxationScheduler
 from odmactor.scheduler.time import HahnEchoScheduler, HighDecouplingScheduler
 from odmactor.scheduler.spin import SpinControlScheduler
+from odmactor.scheduler.customization import CustomizedScheduler

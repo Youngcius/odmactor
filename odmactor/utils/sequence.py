@@ -5,7 +5,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import reduce
-from typing import List, Union
+from typing import List
 from operator import add
 from copy import deepcopy
 from matplotlib.figure import Figure
@@ -45,9 +45,12 @@ class SequenceString:
 
 def sequences_to_figure(sequences: List[List[int]]) -> Figure:
     """
-    Convert sequences (list of list) into a Figure instance
+    Convert sequences (list of lists) into a Figure instance
     """
     sequences = expand_to_same_length(sequences)
+    if sum(reduce(add, sequences)) == 0:
+        return plt.figure()
+
     N = len(sequences)  # num_channels
     idx_exist = [i for i, l in enumerate(sequences) if sum(l) > 0]
     n = len(idx_exist)  # effective number of channels
@@ -94,46 +97,6 @@ def sequences_to_figure(sequences: List[List[int]]) -> Figure:
     return fig
 
 
-# def seq_to_fig(seq: List[List[Union[float, int]]]) -> Figure:
-#     """
-#     Convert sequences (list of list) into a Figure instance
-#     """
-#     idx_exist = [i for i, l in enumerate(seq) if sum(l) > 0]
-#     n = len(idx_exist)  # num_channels
-#     channels = ['ch {}'.format(i + 1) for i in idx_exist]
-#     seq_eff = [seq[i] for i in idx_exist]
-#     gcd = reduce(math.gcd, list(map(int, reduce(concat, seq_eff))))
-#     for i in range(n):
-#         seq_eff[i] = [int(t / gcd) for t in seq_eff[i]]
-#     baselines = []
-#     levels = []
-
-#     for i in range(n):
-#         # 0,1,2,3,...
-#         level = []
-#         j = 0
-#         l = len(seq_eff[i])
-#         while j < l:
-#             level += [1] * seq_eff[i][j] + [0] * seq_eff[i][j + 1]
-#             j += 2
-
-#         b = 1.1 * i
-#         level = [lev + b for lev in level]
-#         baselines.append(b)
-#         levels.append(level)
-#     fig = plt.figure(figsize=(14, 2 * len(idx_exist)))
-#     for i, ch in enumerate(channels):
-#         plt.stairs(levels[i], baseline=baselines[i], label=ch)
-#     plt.legend(loc='upper left')
-#     plt.title('Sequences')
-#     plt.ylabel('channel')
-#     plt.xlabel('time ({} ns)'.format(int(gcd)))
-#     plt.xlim(0, max([sum(s) for s in seq_eff]))
-#     plt.ylim(-0.1, max(levels[-1]) + 0.1)
-#     plt.yticks([])
-#     return fig
-
-
 def sequences_to_string(sequences: List[List[int]]) -> str:
     """
     Convert sequences (list of list) into a string
@@ -165,6 +128,8 @@ def expand_to_same_length(sequences: List[List[int]]) -> List[List[int]]:
     """
     Expand eac sequence to the same length, by calculating the LCM of all sequences lengths
     """
+    if sum(reduce(add, sequences)) == 0:
+        return sequences
     sequences_expanded = deepcopy(sequences)
     len_eff = [(i, int(sum(seq))) for i, seq in enumerate(sequences) if int(sum(seq)) > 0]
     if len(np.unique(len_eff)) == 1:
