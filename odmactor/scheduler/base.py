@@ -68,43 +68,32 @@ class Scheduler(abc.ABC):
             os.mkdir(self.output_dir)
 
         # 1: high-level effective; 0: low level effective
-        kwargs.setdefault('laser_ttl', 1)
-        kwargs.setdefault('mw_ttl', 1)
-        kwargs.setdefault('apd_ttl', 1)
-        kwargs.setdefault('tagger_ttl', 1)
+        self.laser_ttl = kwargs.get('laser_ttl', 1)
+        self.mw_ttl = kwargs.get('mw_ttl', 1)
+        self.apd_ttl = kwargs.get('apd_ttl', 1)
+        self.tagger_ttl = kwargs.get('tagger_ttl', 1)
 
-        self.laser_ttl = kwargs['laser_ttl']
-        self.mw_ttl = kwargs['mw_ttl']
-        self.apd_ttl = kwargs['apd_ttl']
-        self.tagger_ttl = kwargs['tagger_ttl']
+        self.with_ref = kwargs.get('with_ref', True)
 
-        kwargs.setdefault('with_ref', True)
-        self.with_ref = kwargs['with_ref']
-
-        kwargs.setdefault('epoch_omit', 0)
-        self.epoch_omit = kwargs['epoch_omit']
+        self.epoch_omit = kwargs.get('epoch_omit', 0)
 
         # high-order dynamical decoupling order
-        kwargs.setdefault('order', 1)
-        self.order = kwargs['order']
+        self.order = kwargs.get('order', 1)
 
         # synchronization frequency between MW and Lockin, unit: Hz
-        kwargs.setdefault('sync_freq', 50)
-        self.sync_freq = kwargs['sync_freq']
+        self.sync_freq = kwargs.get('sync_freq', 50)
 
         # on/off MW when on/off ASG's MW channel
-        kwargs.setdefault('mw_on_off', False)
-        self.mw_on_off = kwargs['mw_on_off']
-        kwargs.setdefault('asg_control_mw_on_off', True)  # set False when MW switch controlled  by ASG is no available
-        self.asg_control_mw_on_off = kwargs['asg_control_mw_on_off']
+        self.mw_on_off = kwargs.get('mw_on_off', False)
+
+        # set False when MW switch controlled  by ASG is no available
+        self.asg_control_mw_on_off = kwargs.get('asg_control_mw_on_off', True)
 
         # use lockin or tagger
-        kwargs.setdefault('use_lockin', False)
-        self.use_lockin = kwargs['use_lockin']
+        self.use_lockin = kwargs.get('use_lockin', False)
 
         # output lock-in sync sequence from ASG or not
-        kwargs.setdefault('output_lockin', False)
-        self.output_lockin = kwargs['output_lockin']
+        self.output_lockin = kwargs.get('output_lockin', False)
 
         # initialize instruments
         self.laser = Laser()
@@ -786,7 +775,8 @@ class TimeDomainScheduler(Scheduler):
             self._times = np.arange(start, end + step / 2, step).tolist()
         elif length is not None:
             if logarithm:
-                self._times = np.unique((np.logspace(np.log10(start), np.log10(end), length) / 10).round() * 10).tolist()
+                self._times = np.unique(
+                    (np.logspace(np.log10(start), np.log10(end), length) / 10).round() * 10).tolist()
             else:
                 self._times = np.unique((np.linspace(start, end, length) / 10).round() * 10).tolist()
         else:

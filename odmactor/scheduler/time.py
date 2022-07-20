@@ -218,8 +218,7 @@ class RelaxationScheduler(TimeDomainScheduler):
     def __init__(self, *args, **kwargs):
         super(RelaxationScheduler, self).__init__(*args, **kwargs)
         self.name = 'T1 Relaxation Scheduler'
-        kwargs.setdefault('ms', 0)
-        self.ms = kwargs['ms']
+        self.ms = kwargs.get('ms', 0)
 
     def gene_detect_seq(self, t_free):
         """
@@ -458,7 +457,8 @@ class HighDecouplingScheduler(TimeDomainScheduler):
             laser_seq = [t_init,
                          inter_init_mw + (t_mw_pi + t_free) * (n + 1) + inter_mw_read,
                          pre_read + t_read_sig + inter_readout + t_read_ref + inter_period, 0]
-            mw_seq = [0, t_init + inter_init_mw, t_mw_half_pi] + [t_free, t_mw_pi] * n + [t_free, t_mw_half_pi, inter_mw_read + pre_read + t_read_sig + inter_readout + t_read_ref + inter_period]
+            mw_seq = [0, t_init + inter_init_mw, t_mw_half_pi] + [t_free, t_mw_pi] * n + [t_free, t_mw_half_pi,
+                                                                                          inter_mw_read + pre_read + t_read_sig + inter_readout + t_read_ref + inter_period]
             tagger_seq = [0,
                           t_init + inter_init_mw + (t_mw_pi + t_free) * (n + 1) + + inter_mw_read + pre_read,
                           t_read_sig,
@@ -470,7 +470,8 @@ class HighDecouplingScheduler(TimeDomainScheduler):
             laser_seq = [t_init,
                          inter_init_mw + (t_mw_pi + t_free) * (n + 1) + inter_mw_read,
                          pre_read + t_read_sig + inter_period, 0]
-            mw_seq = [0, t_init + inter_init_mw, t_mw_half_pi] + [t_free, t_mw_pi] * n + [t_free, t_mw_half_pi, inter_mw_read + pre_read + t_read_sig + inter_period]
+            mw_seq = [0, t_init + inter_init_mw, t_mw_half_pi] + [t_free, t_mw_pi] * n + [t_free, t_mw_half_pi,
+                                                                                          inter_mw_read + pre_read + t_read_sig + inter_period]
             tagger_seq = [0,
                           t_init + inter_init_mw + (t_mw_pi + t_free) * (n + 1) + + inter_mw_read + pre_read,
                           t_read_sig,
