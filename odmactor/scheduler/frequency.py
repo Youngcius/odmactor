@@ -2,10 +2,13 @@
 Frequency-domain ODMR detecting classes
 ---
 1. Continuous-wave detection (frequency-domain method)
-Basic: 激光和微波同时施加，单光子探测器持续探测全过程中的光子数，通过扫描微波频率产生频谱
-Remarks: 连续波谱不是典型的量子传感过程，实验中系统处于开放稳态，相干性在此实验中几乎不起作用
----
+    1) set MW frequency range, for scanning
+    2) simultaneously carry out MW and Laser
+    3) acquire photon counts
 2. Pulse detection (frequency-domain method)
+    1) set MW frequency range, for scanning
+    2) set Laser initialization & readout and MW operation pulse sequences
+    3) acquire photon counts
 """
 
 import time

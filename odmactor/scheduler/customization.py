@@ -1,5 +1,5 @@
 """
-Customized Scheduler
+User-customized Scheduler
 """
 import time
 import scipy.constants as C

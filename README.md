@@ -189,7 +189,7 @@ contrast = [sig / ref for sig, ref in
 ### GUI software
 
 A Graphical User Interface (GUI) version software based on this SDK is also implemented and has been used well in
-our [QIM](https://quantum.lab.arizona.edu/) group. It is also published on the author's [GitHub page](https://github.com/youngcius).
+our [QIM](https://quantum.lab.arizona.edu/) group. It is also published on the author's [GitHub page](https://github.com/Youngcius/odmactor-gui).
 
 ### Frequently Asked Questions
 

@@ -7,16 +7,16 @@ class Laser(object):
         """
         Reconnect the instrument
         """
-        print('Laser 重新连接')
+        print('Laser reconnected')
 
     def start(self):
-        print('Laser 打开')
+        print('Laser opened')
 
     def stop(self):
-        print('Laser 关闭')
+        print('Laser closed')
 
     def close(self):
-        print('Laser 释放')
+        print('Laser released')
 
     def set_power(self, power):
-        print('设置 Laser 功率为', power)
+        print('Set Laser power:', power)
