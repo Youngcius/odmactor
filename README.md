@@ -135,9 +135,9 @@ NI DAQ device is used when using lock-in detecting mode instead APD with Time Ta
 - Vendor: [National Instruments](https://www.ni.com/)
 
 
-## Implementation method
+## Usage method
 
-### Basic Implementation Steps
+### Basic steps
 
 - Configuration
     1. Set channels of ASG
