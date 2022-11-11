@@ -133,6 +133,7 @@ dmypy.json
 .idea/
 .pytest_cache
 
+.DS_Store
 
 
 # Personam files
